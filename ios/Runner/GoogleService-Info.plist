@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>730430895323-jrpv2o7di2r3d1ru030k9pttochpn685.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.730430895323-jrpv2o7di2r3d1ru030k9pttochpn685</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>730430895323-8t3dtqgcoj1cis54bqggq8v4o0vrari6.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCzyLzCITdeK2f9Ei6MmEFu5P3TdeflJXo</string>
+	<key>GCM_SENDER_ID</key>
+	<string>730430895323</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.example.cybershieldApp</string>
+	<key>PROJECT_ID</key>
+	<string>cybershield-mobileintern-78da8</string>
+	<key>STORAGE_BUCKET</key>
+	<string>cybershield-mobileintern-78da8.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:730430895323:ios:1a4d7641e5232b931208fe</string>
+</dict>
+</plist>
