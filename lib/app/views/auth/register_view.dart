@@ -82,73 +82,54 @@ _StrengthResult _evaluatePassword(String value) {
 }
 
 // ─── Register View ─────────────────────────────────────────────────────────
-class RegisterView extends StatelessWidget {
+class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
+
+  @override
+  State<RegisterView> createState() => _RegisterViewState();
+}
+
+class _RegisterViewState extends State<RegisterView> {
+  late TextEditingController nameController;
+  late TextEditingController emailController;
+  late TextEditingController passwordController;
+  late TextEditingController confirmController;
+  late RxBool obscurePassword;
+  late RxBool obscureConfirm;
+  late Rx<_StrengthResult> strength;
+  late RxBool confirmMatches;
+
+  @override
+  void initState() {
+    super.initState();
+    nameController = TextEditingController();
+    emailController = TextEditingController();
+    passwordController = TextEditingController();
+    confirmController = TextEditingController();
+    obscurePassword = true.obs;
+    obscureConfirm = true.obs;
+    strength = _evaluatePassword('').obs;
+    confirmMatches = false.obs;
+  }
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    confirmController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final AuthController controller = Get.find<AuthController>();
-
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final passwordController = TextEditingController();
-    final confirmController = TextEditingController();
-
-    final RxBool obscurePassword = true.obs;
-    final RxBool obscureConfirm = true.obs;
-    final Rx<_StrengthResult> strength =
-        _evaluatePassword('').obs;
-
-    // Track confirm field match for border coloring
-    final RxBool confirmMatches = false.obs;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0F14),
       body: SafeArea(
         child: Stack(
           children: [
-            // ── Navigation side-effect: isolated in its own tiny Obx ──
-            // This is the correct GetX pattern: Obx only wraps the widget
-            // that actually reads an observable. Never wrap a whole screen.
-            // ── Strength Bar ──────────────────────────────────
-            Obx(() {
-              // ✅ Check the observable directly so GetX registers the listener immediately
-              if (strength.value.label.isEmpty) {
-                return const SizedBox.shrink();
-              }
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: List.generate(4, (i) {
-                      return Expanded(
-                        child: Container(
-                          margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: strength.value.bars[i],
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                        ),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 6),
-                  if (strength.value.label.isNotEmpty)
-                    Text(
-                      strength.value.label,
-                      style: TextStyle(
-                        color: strength.value.labelColor,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
-              );
-            }),
-
-
-            // ── Main UI: no Obx here; inner widgets have their own Obx ──
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               child: ListView(
@@ -317,6 +298,17 @@ class RegisterView extends StatelessWidget {
                     borderColor: confirmMatches.value
                         ? const Color(0xFF00E5A0)
                         : null,
+                    suffixIcon: GestureDetector(
+                      onTap: () =>
+                      obscureConfirm.value = !obscureConfirm.value,
+                      child: Icon(
+                        obscureConfirm.value
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                        color: const Color(0xFF8A8F9E),
+                        size: 20,
+                      ),
+                    ),
                   )),
 
                   const SizedBox(height: 32),
@@ -398,11 +390,11 @@ class RegisterView extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
 // Shared auth screen components
 // These are intentionally prefixed with _Auth to keep them file-scoped.
 // For reuse across auth screens, extract to lib/widgets/auth_widgets.dart.
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
 
 class _AuthLabel extends StatelessWidget {
   final String label;
