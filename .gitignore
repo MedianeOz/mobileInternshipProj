@@ -9,7 +9,7 @@ android/.gradle/
 android/app/build/
 
 #lib
-lib/app/firebase_options.dart
+#lib/app/firebase_options.dart
 
 # iOS
 ios/Pods/
