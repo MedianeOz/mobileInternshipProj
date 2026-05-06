@@ -9,7 +9,7 @@ android/.gradle/
 android/app/build/
 
 #lib
-#lib/app/firebase_options.dart
+#lib/firebase_options.dart
 
 # iOS
 ios/Pods/
@@ -26,4 +26,4 @@ ios/Flutter/Flutter.podspec
 *.tmp
 *.swp
 .DS_Store
-lib/firebase_options.dart
+
