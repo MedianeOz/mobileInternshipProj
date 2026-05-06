@@ -246,7 +246,9 @@ class _RegisterViewState extends State<RegisterView> {
 
                   // ── Strength Bar ──────────────────────────────────
                   Obx(() {
-                    if (passwordController.text.isEmpty) {
+                    final currentStrength = strength.value;
+
+                    if (currentStrength.label.isEmpty) {
                       return const SizedBox.shrink();
                     }
                     return Column(
@@ -260,7 +262,7 @@ class _RegisterViewState extends State<RegisterView> {
                                     right: i < 3 ? 4 : 0),
                                 height: 4,
                                 decoration: BoxDecoration(
-                                  color: strength.value.bars[i],
+                                  color: currentStrength.bars[i],
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
@@ -268,15 +270,14 @@ class _RegisterViewState extends State<RegisterView> {
                           }),
                         ),
                         const SizedBox(height: 6),
-                        if (strength.value.label.isNotEmpty)
-                          Text(
-                            strength.value.label,
-                            style: TextStyle(
-                              color: strength.value.labelColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
+                        Text(
+                          currentStrength.label,
+                          style: TextStyle(
+                          color: currentStrength.labelColor,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          )
+                        )
                       ],
                     );
                   }),
