@@ -26,22 +26,58 @@ _StrengthResult _evaluatePassword(String value) {
     );
   }
 
+  final bool hasLower = value.contains(RegExp(r'[a-z]'));
   final bool hasUpper = value.contains(RegExp(r'[A-Z]'));
-  final bool hasDigit = value.contains(RegExp(r'\d'));
-  final bool hasSymbol = value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+  final bool hasMultipleDigits = value.contains(RegExp(r'\d{2,}')) ||
+      (value.split('').where((c) => RegExp(r'\d').hasMatch(c)).length >= 2);
+  final bool hasSymbol =
+  value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
+
   final int len = value.length;
 
-  // Very Strong: 12+ chars, uppercase + digit + symbol
-  if (len >= 12 && hasUpper && hasDigit && hasSymbol) {
+  int score = 0;
+
+  // Length scoring
+  if (len >= 10) score++;
+
+  // Complexity scoring
+  if (hasLower && hasUpper) score++;
+  if (hasMultipleDigits) score++;
+  if (hasSymbol) score++;
+
+  // Clamp
+  // if (score > 4) score = 4;
+
+  // Weak
+  if (score <= 1) {
     return _StrengthResult(
-      bars: List.generate(4, (_) => const Color(0xFF00C853)),
-      label: 'Very Strong',
-      labelColor: const Color(0xFF00C853),
+      bars: [
+        const Color(0xFFFF4444),
+        const Color(0xFF2A2D3A),
+        const Color(0xFF2A2D3A),
+        const Color(0xFF2A2D3A),
+      ],
+      label: 'Weak',
+      labelColor: const Color(0xFFFF4444),
     );
   }
 
-  // Strong: 10+ chars, uppercase + digit (no symbol yet)
-  if (len >= 10 && hasUpper && hasDigit) {
+  // Fair
+  if (score == 2) {
+    return _StrengthResult(
+      bars: [
+        const Color(0xFFE5A000),
+        const Color(0xFFE5A000),
+        const Color(0xFF2A2D3A),
+        const Color(0xFF2A2D3A),
+      ],
+      label: 'Fair',
+      labelColor: const Color(0xFFE5A000),
+    );
+  }
+
+  // Strong
+  if (score == 3) {
     return _StrengthResult(
       bars: [
         const Color(0xFF00E5A0),
@@ -54,32 +90,15 @@ _StrengthResult _evaluatePassword(String value) {
     );
   }
 
-  // Fair: 6+ chars with uppercase AND digit
-  if (len >= 6 && hasUpper && hasDigit) {
-    return _StrengthResult(
-      bars: [
-        const Color(0xFFE5A000),
-        const Color(0xFFE5A000),
-        const Color(0xFF2A2D3A),
-        const Color(0xFF2A2D3A),
-      ],
-      label: 'Fair — add a symbol for Very Strong',
-      labelColor: const Color(0xFFE5A000),
-    );
-  }
-
-  // Weak
+  // Very Strong
   return _StrengthResult(
-    bars: [
-      const Color(0xFFFF4444),
-      const Color(0xFF2A2D3A),
-      const Color(0xFF2A2D3A),
-      const Color(0xFF2A2D3A),
-    ],
-    label: 'Weak',
-    labelColor: const Color(0xFFFF4444),
+    bars: List.generate(4, (_) => const Color(0xFF00C853)),
+    label: 'Very Strong',
+    labelColor: const Color(0xFF00C853),
   );
 }
+
+
 
 // ─── Register View ─────────────────────────────────────────────────────────
 class RegisterView extends StatefulWidget {
