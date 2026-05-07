@@ -290,12 +290,12 @@ class _RegisterViewState extends State<RegisterView> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          currentStrength.label,
-                          style: TextStyle(
-                          color: currentStrength.labelColor,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          )
+                            currentStrength.label,
+                            style: TextStyle(
+                              color: currentStrength.labelColor,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            )
                         )
                       ],
                     );
