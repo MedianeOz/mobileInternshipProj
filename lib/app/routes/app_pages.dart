@@ -9,11 +9,8 @@ import 'app_routes.dart';
 
 class AppPages {
   static final routes = [
-    GetPage(
-      name: AppRoutes.INITIAL,
-      page: () => const HomeView(),
-      binding: HomeBinding(),
-    ),
+
+    // ── Auth screens ─────────────────────────────────────────────
     GetPage(
       name: AppRoutes.LOGIN,
       page: () => const LoginView(),
@@ -27,6 +24,25 @@ class AppPages {
     GetPage(
       name: AppRoutes.FORGOT_PASSWORD,
       page: () => const ForgotPasswordView(),
+      binding: AuthBinding(),
+    ),
+
+    // ── Home screen ───────────────────────────────────────────────
+    // AuthBinding is included here so AuthController is available
+    // on the home screen (needed for logout + showing user email).
+    GetPage(
+      name: AppRoutes.HOME,
+      page: () => const HomeView(),
+      bindings: [
+        AuthBinding(),
+        HomeBinding(),
+      ],
+    ),
+
+    // ── Initial route (redirects to login) ───────────────────────
+    GetPage(
+      name: AppRoutes.INITIAL,
+      page: () => const LoginView(),
       binding: AuthBinding(),
     ),
   ];
