@@ -1,18 +1,42 @@
+// lib/app/views/auth/forgot_password_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 import '../../routes/app_routes.dart';
 
-class ForgotPasswordView extends StatelessWidget {
+class ForgotPasswordView extends StatefulWidget {    // ← was StatelessWidget
   const ForgotPasswordView({super.key});
+
+  @override
+  State<ForgotPasswordView> createState() => _ForgotPasswordViewState();
+}
+
+class _ForgotPasswordViewState extends State<ForgotPasswordView> {
+  late TextEditingController emailController;
+  late RxBool emailSent;                             // ← moved out of build()
+
+  @override
+  void initState() {
+    super.initState();
+    emailController = TextEditingController();
+    emailSent       = false.obs;
+
+    // ── Clear any stale error from a previous auth screen ──────
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.find<AuthController>().clearError();
+    });
+  }
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final AuthController controller = Get.find<AuthController>();
-    final emailController = TextEditingController();
-
-    // Track whether the reset email was sent successfully
-    final RxBool emailSent = false.obs;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0D0F14),
@@ -178,7 +202,7 @@ class ForgotPasswordView extends StatelessWidget {
                       if (emailController.text.trim().isEmpty) {
                         Get.snackbar(
                           'Missing email',
-                          'Please enter your email address',
+                          'Please enter your email address.',
                           backgroundColor: const Color(0xFF1A1D26),
                           colorText: Colors.white,
                         );
@@ -186,9 +210,8 @@ class ForgotPasswordView extends StatelessWidget {
                       }
                       await controller
                           .resetPassword(emailController.text.trim());
-                      // If no error, show success state
                       if (controller.errorMessage.value.isEmpty) {
-                        emailSent.value = true;
+                        emailSent.value = true;    // ← safe: stable reference
                       }
                     },
                     style: ElevatedButton.styleFrom(
@@ -225,7 +248,10 @@ class ForgotPasswordView extends StatelessWidget {
                 // ── Back to Login ──────────────────────────────────
                 Center(
                   child: GestureDetector(
-                    onTap: () => Get.toNamed(AppRoutes.LOGIN),
+                    onTap: () {
+                      controller.clearError();           // ← clear before navigating
+                      Get.toNamed(AppRoutes.LOGIN);
+                    },
                     child: const Text(
                       'Back to login',
                       style: TextStyle(
@@ -239,7 +265,6 @@ class ForgotPasswordView extends StatelessWidget {
 
                 const SizedBox(height: 16),
 
-                // ── Spam note ──────────────────────────────────────
                 const Center(
                   child: Text(
                     "Check your spam folder if you don't see it.",

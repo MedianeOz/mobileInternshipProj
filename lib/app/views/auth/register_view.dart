@@ -1,104 +1,11 @@
+// lib/app/views/auth/register_view.dart
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 import '../../routes/app_routes.dart';
-
-// ─── Strength Model ────────────────────────────────────────────────────────
-class _StrengthResult {
-  final List<Color> bars;
-  final String label;
-  final Color labelColor;
-
-  const _StrengthResult({
-    required this.bars,
-    required this.label,
-    required this.labelColor,
-  });
-}
-
-// ─── Strength Evaluator ────────────────────────────────────────────────────
-_StrengthResult _evaluatePassword(String value) {
-  if (value.isEmpty) {
-    return _StrengthResult(
-      bars: List.generate(4, (_) => const Color(0xFF2A2D3A)),
-      label: '',
-      labelColor: Colors.transparent,
-    );
-  }
-
-  final bool hasLower = value.contains(RegExp(r'[a-z]'));
-  final bool hasUpper = value.contains(RegExp(r'[A-Z]'));
-  final bool hasMultipleDigits = value.contains(RegExp(r'\d{2,}')) ||
-      (value.split('').where((c) => RegExp(r'\d').hasMatch(c)).length >= 2);
-  final bool hasSymbol =
-  value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'));
-
-  final int len = value.length;
-
-  int score = 0;
-
-  // Length scoring
-  if (len >= 10) score++;
-
-  // Complexity scoring
-  if (hasLower && hasUpper) score++;
-  if (hasMultipleDigits) score++;
-  if (hasSymbol) score++;
-
-  // Clamp
-  // if (score > 4) score = 4;
-
-  // Weak
-  if (score <= 1) {
-    return _StrengthResult(
-      bars: [
-        const Color(0xFFFF4444),
-        const Color(0xFF2A2D3A),
-        const Color(0xFF2A2D3A),
-        const Color(0xFF2A2D3A),
-      ],
-      label: 'Weak',
-      labelColor: const Color(0xFFFF4444),
-    );
-  }
-
-  // Fair
-  if (score == 2) {
-    return _StrengthResult(
-      bars: [
-        const Color(0xFFE5A000),
-        const Color(0xFFE5A000),
-        const Color(0xFF2A2D3A),
-        const Color(0xFF2A2D3A),
-      ],
-      label: 'Fair',
-      labelColor: const Color(0xFFE5A000),
-    );
-  }
-
-  // Strong
-  if (score == 3) {
-    return _StrengthResult(
-      bars: [
-        const Color(0xFF00E5A0),
-        const Color(0xFF00E5A0),
-        const Color(0xFF00E5A0),
-        const Color(0xFF2A2D3A),
-      ],
-      label: 'Strong',
-      labelColor: const Color(0xFF00E5A0),
-    );
-  }
-
-  // Very Strong
-  return _StrengthResult(
-    bars: List.generate(4, (_) => const Color(0xFF00C853)),
-    label: 'Very Strong',
-    labelColor: const Color(0xFF00C853),
-  );
-}
-
-
+import '../../utils/validators.dart';
+import '../../utils/password_analyzer.dart';
 
 // ─── Register View ─────────────────────────────────────────────────────────
 class RegisterView extends StatefulWidget {
@@ -115,20 +22,25 @@ class _RegisterViewState extends State<RegisterView> {
   late TextEditingController confirmController;
   late RxBool obscurePassword;
   late RxBool obscureConfirm;
-  late Rx<_StrengthResult> strength;
+  late Rx<PasswordStrengthResult> strength;   // ← now uses PasswordAnalyzer type
   late RxBool confirmMatches;
 
   @override
   void initState() {
     super.initState();
-    nameController = TextEditingController();
-    emailController = TextEditingController();
+    nameController     = TextEditingController();
+    emailController    = TextEditingController();
     passwordController = TextEditingController();
-    confirmController = TextEditingController();
-    obscurePassword = true.obs;
-    obscureConfirm = true.obs;
-    strength = _evaluatePassword('').obs;
-    confirmMatches = false.obs;
+    confirmController  = TextEditingController();
+    obscurePassword    = true.obs;
+    obscureConfirm     = true.obs;
+    strength           = PasswordAnalyzer.evaluate('').obs;  // ← PasswordAnalyzer
+    confirmMatches     = false.obs;
+
+    // Clear any stale error arriving from a previous auth screen
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Get.find<AuthController>().clearError();
+    });
   }
 
   @override
@@ -183,7 +95,7 @@ class _RegisterViewState extends State<RegisterView> {
 
                   const SizedBox(height: 40),
 
-                  // ── Error Banner — has its own Obx ────────────────
+                  // ── Error Banner ──────────────────────────────────
                   Obx(() {
                     if (controller.errorMessage.value.isEmpty) {
                       return const SizedBox.shrink();
@@ -236,17 +148,13 @@ class _RegisterViewState extends State<RegisterView> {
                     hintText: '••••••••••',
                     obscureText: obscurePassword.value,
                     onChanged: (val) {
-                      strength.value = _evaluatePassword(val);
+                      strength.value = PasswordAnalyzer.evaluate(val); // ← PasswordAnalyzer
                       confirmMatches.value =
-                          val == confirmController.text &&
-                              val.isNotEmpty;
+                          val == confirmController.text && val.isNotEmpty;
                     },
-                    borderColor: strength.value.label == 'Very Strong'
-                        ? const Color(0xFF00C853)
-                        : strength.value.label == 'Strong'
-                        ? const Color(0xFF00E5A0)
-                        : strength.value.label.startsWith('Fair')
-                        ? const Color(0xFFE5A000)
+                    // ← single field from result, no more ternary chain
+                    borderColor: strength.value.level != PasswordStrength.empty
+                        ? strength.value.borderColor
                         : null,
                     suffixIcon: GestureDetector(
                       onTap: () =>
@@ -265,9 +173,8 @@ class _RegisterViewState extends State<RegisterView> {
 
                   // ── Strength Bar ──────────────────────────────────
                   Obx(() {
-                    final currentStrength = strength.value;
-
-                    if (currentStrength.label.isEmpty) {
+                    final s = strength.value;
+                    if (s.level == PasswordStrength.empty) {
                       return const SizedBox.shrink();
                     }
                     return Column(
@@ -277,11 +184,10 @@ class _RegisterViewState extends State<RegisterView> {
                           children: List.generate(4, (i) {
                             return Expanded(
                               child: Container(
-                                margin: EdgeInsets.only(
-                                    right: i < 3 ? 4 : 0),
+                                margin: EdgeInsets.only(right: i < 3 ? 4 : 0),
                                 height: 4,
                                 decoration: BoxDecoration(
-                                  color: currentStrength.bars[i],
+                                  color: s.bars[i],
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                               ),
@@ -290,13 +196,13 @@ class _RegisterViewState extends State<RegisterView> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                            currentStrength.label,
-                            style: TextStyle(
-                              color: currentStrength.labelColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            )
-                        )
+                          s.label,
+                          style: TextStyle(
+                            color: s.labelColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     );
                   }),
@@ -312,8 +218,7 @@ class _RegisterViewState extends State<RegisterView> {
                     obscureText: obscureConfirm.value,
                     onChanged: (val) {
                       confirmMatches.value =
-                          val == passwordController.text &&
-                              val.isNotEmpty;
+                          val == passwordController.text && val.isNotEmpty;
                     },
                     borderColor: confirmMatches.value
                         ? const Color(0xFF00E5A0)
@@ -338,25 +243,30 @@ class _RegisterViewState extends State<RegisterView> {
                     label: 'Create account',
                     isLoading: controller.isLoading.value,
                     onPressed: () {
-                      if (nameController.text.trim().isEmpty) {
-                        Get.snackbar(
-                          'Missing field',
-                          'Please enter your full name',
-                          backgroundColor: const Color(0xFF1A1D26),
-                          colorText: Colors.white,
-                        );
+                      // ── Validators (replaces old inline isEmpty checks) ──
+                      final nameError  = Validators.fullName(nameController.text);
+                      final emailError = Validators.email(emailController.text);
+
+                      if (nameError != null) {
+                        Get.snackbar('Invalid input', nameError,
+                            backgroundColor: const Color(0xFF1A1D26),
+                            colorText: Colors.white);
                         return;
                       }
-                      if (passwordController.text !=
-                          confirmController.text) {
-                        Get.snackbar(
-                          'Password mismatch',
-                          'Passwords do not match',
-                          backgroundColor: const Color(0xFF1A1D26),
-                          colorText: Colors.white,
-                        );
+                      if (emailError != null) {
+                        Get.snackbar('Invalid input', emailError,
+                            backgroundColor: const Color(0xFF1A1D26),
+                            colorText: Colors.white);
                         return;
                       }
+                      if (passwordController.text != confirmController.text) {
+                        Get.snackbar(
+                            'Password mismatch', 'Passwords do not match.',
+                            backgroundColor: const Color(0xFF1A1D26),
+                            colorText: Colors.white);
+                        return;
+                      }
+
                       controller.register(
                         emailController.text.trim(),
                         passwordController.text.trim(),
@@ -386,7 +296,10 @@ class _RegisterViewState extends State<RegisterView> {
                             color: Color(0xFF8A8F9E), fontSize: 14),
                       ),
                       GestureDetector(
-                        onTap: () => Get.toNamed(AppRoutes.LOGIN),
+                        onTap: () {
+                          controller.clearError(); // ← clear before navigating
+                          Get.toNamed(AppRoutes.LOGIN);
+                        },
                         child: const Text(
                           'Sign in',
                           style: TextStyle(
@@ -411,9 +324,7 @@ class _RegisterViewState extends State<RegisterView> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Shared auth screen components
-// These are intentionally prefixed with _Auth to keep them file-scoped.
-// For reuse across auth screens, extract to lib/widgets/auth_widgets.dart.
+// Shared auth screen components (file-scoped)
 // ─────────────────────────────────────────────────────────────────────────
 
 class _AuthLabel extends StatelessWidget {
@@ -463,8 +374,7 @@ class _AuthTextField extends StatelessWidget {
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle:
-        const TextStyle(color: Color(0xFF4A5568), fontSize: 15),
+        hintStyle: const TextStyle(color: Color(0xFF4A5568), fontSize: 15),
         filled: true,
         fillColor: const Color(0xFF1A1D26),
         suffixIcon: suffixIcon != null
@@ -488,8 +398,7 @@ class _AuthTextField extends StatelessWidget {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(
-              color: borderColor ?? const Color(0xFF00E5A0),
-              width: 1.5),
+              color: borderColor ?? const Color(0xFF00E5A0), width: 1.5),
         ),
       ),
     );
@@ -517,8 +426,7 @@ class _AuthPrimaryButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF00E5A0),
           foregroundColor: const Color(0xFF0D0F14),
-          disabledBackgroundColor:
-          const Color(0xFF00E5A0).withOpacity(0.5),
+          disabledBackgroundColor: const Color(0xFF00E5A0).withOpacity(0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),

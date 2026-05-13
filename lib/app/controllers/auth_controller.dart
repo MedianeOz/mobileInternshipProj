@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import 'dart:async';
 
 class AuthController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
@@ -8,6 +9,8 @@ class AuthController extends GetxController {
   RxBool isLoading = false.obs;
   RxString errorMessage = ''.obs;
   Rxn<User> currentUser = Rxn<User>();
+
+  late StreamSubscription<User?> _authSub;   // ← store the subscription
 
   @override
   void onInit() {
@@ -17,10 +20,19 @@ class AuthController extends GetxController {
     currentUser.value = _authService.currentUser;
 
     // Listen auth state changes
-    _authService.authStateChanges.listen((user) {
+    _authSub = _authService.authStateChanges.listen((user) {
       currentUser.value = user;
     });
   }
+
+  @override
+  void onClose() {
+    _authSub.cancel();   // ← cancel on controller disposal
+    super.onClose();
+  }
+
+  // ── Clear error (call when navigating between auth screens) ──
+  void clearError() => errorMessage.value = '';
 
   // ── Register ────────────────────────────────────────────────
   Future<void> register(String email, String password) async {
@@ -142,6 +154,15 @@ class AuthController extends GetxController {
     // ── Network ──
       case 'network-request-failed':
         return 'No internet connection. Please check your network.';
+
+      case 'requires-recent-login':
+        return 'For security, please sign out and sign in again before making this change.';
+      case 'account-exists-with-different-credential':
+        return 'An account already exists with this email using a different sign-in method.';
+      case 'expired-action-code':
+        return 'This reset link has expired. Please request a new one.';
+      case 'invalid-action-code':
+        return 'This reset link is invalid or has already been used.';
 
     // ── Google ──
       case 'google-sign-in-aborted':
