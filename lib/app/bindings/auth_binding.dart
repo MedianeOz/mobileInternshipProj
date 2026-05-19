@@ -5,7 +5,11 @@ import '../controllers/auth_controller.dart';
 class AuthBinding extends Bindings {
   @override
   void dependencies() {
-    Get.put(AuthService());
-    Get.put(AuthController());
+    if (!Get.isRegistered<AuthService>()) {
+      Get.put(AuthService());
+    }
+    if (!Get.isRegistered<AuthController>()) {
+      Get.put(AuthController());
+    }
   }
 }

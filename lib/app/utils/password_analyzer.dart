@@ -23,11 +23,11 @@ class PasswordStrengthResult {
 class PasswordAnalyzer {
   PasswordAnalyzer._();
 
-  static const Color _empty   = Color(0xFF2A2D3A);
-  static const Color _red     = Color(0xFFFF4444);
-  static const Color _amber   = Color(0xFFE5A000);
-  static const Color _teal    = Color(0xFF00E5A0);
-  static const Color _green   = Color(0xFF00C853);
+  static const Color _empty = Color(0xFF2A2D3A);
+  static const Color _red = Color(0xFFFF4444);
+  static const Color _amber = Color(0xFFE5A000);
+  static const Color _teal = Color(0xFF00E5A0);
+  static const Color _green = Color(0xFF00C853);
 
   static PasswordStrengthResult evaluate(String value) {
     if (value.isEmpty) {
@@ -41,11 +41,18 @@ class PasswordAnalyzer {
     }
 
     int score = 0;
-    if (value.length >= 10) score++;
-    if (value.contains(RegExp(r'[a-z]')) &&
-        value.contains(RegExp(r'[A-Z]'))) score++;
-    if (value.split('').where((c) => RegExp(r'\d').hasMatch(c)).length >= 2) score++;
-    if (value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) score++;
+    if (value.length >= 10) {
+      score++;
+    }
+    if (value.contains(RegExp(r'[a-z]')) && value.contains(RegExp(r'[A-Z]'))) {
+      score++;
+    }
+    if (value.split('').where((c) => RegExp(r'\d').hasMatch(c)).length >= 2) {
+      score++;
+    }
+    if (value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+      score++;
+    }
 
     if (score <= 1) {
       return PasswordStrengthResult(

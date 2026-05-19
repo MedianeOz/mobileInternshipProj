@@ -1,30 +1,37 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cybershield_app/main.dart';
+import 'package:cybershield_app/app/models/threat_advisory.dart';
+import 'package:cybershield_app/app/utils/constants.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const CyberShieldApp());
+  test('ThreatAdvisory parses the NVD CVE response shape', () {
+    final advisory = ThreatAdvisory.fromJson({
+      'id': 'CVE-2024-12345',
+      'published': '2024-03-15T10:00:00.000',
+      'lastModified': '2024-03-16T08:00:00.000',
+      'descriptions': [
+        {'lang': 'en', 'value': 'A vulnerability in CyberShield dependencies.'},
+      ],
+      'metrics': {
+        'cvssMetricV31': [
+          {
+            'cvssData': {
+              'baseScore': 9.8,
+              'baseSeverity': 'CRITICAL',
+            },
+          },
+        ],
+      },
+      'references': [
+        {'url': 'https://example.com/advisory'},
+      ],
+    });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(advisory.id, 'CVE-2024-12345');
+    expect(advisory.description, contains('CyberShield'));
+    expect(advisory.baseScore, 9.8);
+    expect(advisory.severity, 'CRITICAL');
+    expect(advisory.severityColor, AppColors.danger);
+    expect(advisory.referenceUrls, ['https://example.com/advisory']);
   });
 }

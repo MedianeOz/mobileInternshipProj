@@ -22,20 +22,20 @@ class _RegisterViewState extends State<RegisterView> {
   late TextEditingController confirmController;
   late RxBool obscurePassword;
   late RxBool obscureConfirm;
-  late Rx<PasswordStrengthResult> strength;   // ← now uses PasswordAnalyzer type
+  late Rx<PasswordStrengthResult> strength; // ← now uses PasswordAnalyzer type
   late RxBool confirmMatches;
 
   @override
   void initState() {
     super.initState();
-    nameController     = TextEditingController();
-    emailController    = TextEditingController();
+    nameController = TextEditingController();
+    emailController = TextEditingController();
     passwordController = TextEditingController();
-    confirmController  = TextEditingController();
-    obscurePassword    = true.obs;
-    obscureConfirm     = true.obs;
-    strength           = PasswordAnalyzer.evaluate('').obs;  // ← PasswordAnalyzer
-    confirmMatches     = false.obs;
+    confirmController = TextEditingController();
+    obscurePassword = true.obs;
+    obscureConfirm = true.obs;
+    strength = PasswordAnalyzer.evaluate('').obs; // ← PasswordAnalyzer
+    confirmMatches = false.obs;
 
     // Clear any stale error arriving from a previous auth screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -105,7 +105,7 @@ class _RegisterViewState extends State<RegisterView> {
                           horizontal: 14, vertical: 12),
                       margin: const EdgeInsets.only(bottom: 20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF4444).withOpacity(0.1),
+                        color: const Color(0xFFFF4444).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                             color: const Color(0xFFFF4444), width: 1),
@@ -144,30 +144,32 @@ class _RegisterViewState extends State<RegisterView> {
                   _AuthLabel(label: 'Password'),
                   const SizedBox(height: 8),
                   Obx(() => _AuthTextField(
-                    controller: passwordController,
-                    hintText: '••••••••••',
-                    obscureText: obscurePassword.value,
-                    onChanged: (val) {
-                      strength.value = PasswordAnalyzer.evaluate(val); // ← PasswordAnalyzer
-                      confirmMatches.value =
-                          val == confirmController.text && val.isNotEmpty;
-                    },
-                    // ← single field from result, no more ternary chain
-                    borderColor: strength.value.level != PasswordStrength.empty
-                        ? strength.value.borderColor
-                        : null,
-                    suffixIcon: GestureDetector(
-                      onTap: () =>
-                      obscurePassword.value = !obscurePassword.value,
-                      child: Icon(
-                        obscurePassword.value
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: const Color(0xFF8A8F9E),
-                        size: 20,
-                      ),
-                    ),
-                  )),
+                        controller: passwordController,
+                        hintText: '••••••••••',
+                        obscureText: obscurePassword.value,
+                        onChanged: (val) {
+                          strength.value = PasswordAnalyzer.evaluate(
+                              val); // ← PasswordAnalyzer
+                          confirmMatches.value =
+                              val == confirmController.text && val.isNotEmpty;
+                        },
+                        // ← single field from result, no more ternary chain
+                        borderColor:
+                            strength.value.level != PasswordStrength.empty
+                                ? strength.value.borderColor
+                                : null,
+                        suffixIcon: GestureDetector(
+                          onTap: () =>
+                              obscurePassword.value = !obscurePassword.value,
+                          child: Icon(
+                            obscurePassword.value
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: const Color(0xFF8A8F9E),
+                            size: 20,
+                          ),
+                        ),
+                      )),
 
                   const SizedBox(height: 10),
 
@@ -213,76 +215,79 @@ class _RegisterViewState extends State<RegisterView> {
                   _AuthLabel(label: 'Confirm password'),
                   const SizedBox(height: 8),
                   Obx(() => _AuthTextField(
-                    controller: confirmController,
-                    hintText: '••••••••••',
-                    obscureText: obscureConfirm.value,
-                    onChanged: (val) {
-                      confirmMatches.value =
-                          val == passwordController.text && val.isNotEmpty;
-                    },
-                    borderColor: confirmMatches.value
-                        ? const Color(0xFF00E5A0)
-                        : null,
-                    suffixIcon: GestureDetector(
-                      onTap: () =>
-                      obscureConfirm.value = !obscureConfirm.value,
-                      child: Icon(
-                        obscureConfirm.value
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: const Color(0xFF8A8F9E),
-                        size: 20,
-                      ),
-                    ),
-                  )),
+                        controller: confirmController,
+                        hintText: '••••••••••',
+                        obscureText: obscureConfirm.value,
+                        onChanged: (val) {
+                          confirmMatches.value =
+                              val == passwordController.text && val.isNotEmpty;
+                        },
+                        borderColor: confirmMatches.value
+                            ? const Color(0xFF00E5A0)
+                            : null,
+                        suffixIcon: GestureDetector(
+                          onTap: () =>
+                              obscureConfirm.value = !obscureConfirm.value,
+                          child: Icon(
+                            obscureConfirm.value
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: const Color(0xFF8A8F9E),
+                            size: 20,
+                          ),
+                        ),
+                      )),
 
                   const SizedBox(height: 32),
 
                   // ── Create Account Button ─────────────────────────
                   Obx(() => _AuthPrimaryButton(
-                    label: 'Create account',
-                    isLoading: controller.isLoading.value,
-                    onPressed: () {
-                      // ── Validators (replaces old inline isEmpty checks) ──
-                      final nameError  = Validators.fullName(nameController.text);
-                      final emailError = Validators.email(emailController.text);
+                        label: 'Create account',
+                        isLoading: controller.isLoading.value,
+                        onPressed: () {
+                          // ── Validators (replaces old inline isEmpty checks) ──
+                          final nameError =
+                              Validators.fullName(nameController.text);
+                          final emailError =
+                              Validators.email(emailController.text);
 
-                      if (nameError != null) {
-                        Get.snackbar('Invalid input', nameError,
-                            backgroundColor: const Color(0xFF1A1D26),
-                            colorText: Colors.white);
-                        return;
-                      }
-                      if (emailError != null) {
-                        Get.snackbar('Invalid input', emailError,
-                            backgroundColor: const Color(0xFF1A1D26),
-                            colorText: Colors.white);
-                        return;
-                      }
-                      if (passwordController.text != confirmController.text) {
-                        Get.snackbar(
-                            'Password mismatch', 'Passwords do not match.',
-                            backgroundColor: const Color(0xFF1A1D26),
-                            colorText: Colors.white);
-                        return;
-                      }
+                          if (nameError != null) {
+                            Get.snackbar('Invalid input', nameError,
+                                backgroundColor: const Color(0xFF1A1D26),
+                                colorText: Colors.white);
+                            return;
+                          }
+                          if (emailError != null) {
+                            Get.snackbar('Invalid input', emailError,
+                                backgroundColor: const Color(0xFF1A1D26),
+                                colorText: Colors.white);
+                            return;
+                          }
+                          if (passwordController.text !=
+                              confirmController.text) {
+                            Get.snackbar(
+                                'Password mismatch', 'Passwords do not match.',
+                                backgroundColor: const Color(0xFF1A1D26),
+                                colorText: Colors.white);
+                            return;
+                          }
 
-                      controller.register(
-                        emailController.text.trim(),
-                        passwordController.text.trim(),
-                      );
-                    },
-                  )),
+                          controller.register(
+                            emailController.text.trim(),
+                            passwordController.text.trim(),
+                          );
+                        },
+                      )),
 
                   const SizedBox(height: 16),
 
                   // ── Google Button ─────────────────────────────────
                   Obx(() => _AuthSecondaryButton(
-                    label: 'Continue with Google',
-                    isLoading: controller.isLoading.value,
-                    onPressed: controller.loginWithGoogle,
-                    showGoogleIcon: true,
-                  )),
+                        label: 'Continue with Google',
+                        isLoading: controller.isLoading.value,
+                        onPressed: controller.loginWithGoogle,
+                        showGoogleIcon: true,
+                      )),
 
                   const SizedBox(height: 36),
 
@@ -292,8 +297,8 @@ class _RegisterViewState extends State<RegisterView> {
                     children: [
                       const Text(
                         'Already have an account? ',
-                        style: TextStyle(
-                            color: Color(0xFF8A8F9E), fontSize: 14),
+                        style:
+                            TextStyle(color: Color(0xFF8A8F9E), fontSize: 14),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -379,14 +384,13 @@ class _AuthTextField extends StatelessWidget {
         fillColor: const Color(0xFF1A1D26),
         suffixIcon: suffixIcon != null
             ? Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: suffixIcon,
-        )
+                padding: const EdgeInsets.only(right: 12),
+                child: suffixIcon,
+              )
             : null,
-        suffixIconConstraints:
-        const BoxConstraints(minWidth: 0, minHeight: 0),
+        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: BorderSide(color: activeBorder, width: 1),
@@ -426,7 +430,8 @@ class _AuthPrimaryButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF00E5A0),
           foregroundColor: const Color(0xFF0D0F14),
-          disabledBackgroundColor: const Color(0xFF00E5A0).withOpacity(0.5),
+          disabledBackgroundColor:
+              const Color(0xFF00E5A0).withValues(alpha: 0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -434,20 +439,20 @@ class _AuthPrimaryButton extends StatelessWidget {
         ),
         child: isLoading
             ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Color(0xFF0D0F14),
-          ),
-        )
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF0D0F14),
+                ),
+              )
             : Text(
-          label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

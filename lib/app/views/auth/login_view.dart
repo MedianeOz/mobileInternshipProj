@@ -21,9 +21,9 @@ class _LoginViewState extends State<LoginView> {
   @override
   void initState() {
     super.initState();
-    emailController    = TextEditingController();
+    emailController = TextEditingController();
     passwordController = TextEditingController();
-    obscurePassword    = true.obs;
+    obscurePassword = true.obs;
 
     // Clear any stale error arriving from a previous auth screen
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -40,9 +40,9 @@ class _LoginViewState extends State<LoginView> {
 
   // ── Validation (uses Validators util) ────────────────────────
   bool _validateFields() {
-    final emailError    = Validators.email(emailController.text);
+    final emailError = Validators.email(emailController.text);
     final passwordError = Validators.password(passwordController.text);
-    final firstError    = emailError ?? passwordError;
+    final firstError = emailError ?? passwordError;
 
     if (firstError != null) {
       Get.snackbar(
@@ -68,7 +68,7 @@ class _LoginViewState extends State<LoginView> {
             // ── Navigation side-effect ─────────────────────────
             Obx(() {
               if (controller.currentUser.value != null) {
-                Future.microtask(() => Get.offAllNamed(AppRoutes.HOME));
+                Future.microtask(() => Get.offAllNamed(AppRoutes.SHELL));
               }
               return const SizedBox.shrink();
             }),
@@ -117,7 +117,7 @@ class _LoginViewState extends State<LoginView> {
                           horizontal: 14, vertical: 12),
                       margin: const EdgeInsets.only(bottom: 20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF4444).withOpacity(0.1),
+                        color: const Color(0xFFFF4444).withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
                             color: const Color(0xFFFF4444), width: 1),
@@ -145,21 +145,21 @@ class _LoginViewState extends State<LoginView> {
                   _CyberLabel(label: 'Password'),
                   const SizedBox(height: 8),
                   Obx(() => _CyberTextField(
-                    controller: passwordController,
-                    hintText: '••••••••',
-                    obscureText: obscurePassword.value,
-                    suffixIcon: GestureDetector(
-                      onTap: () =>
-                      obscurePassword.value = !obscurePassword.value,
-                      child: Icon(
-                        obscurePassword.value
-                            ? Icons.visibility_outlined
-                            : Icons.visibility_off_outlined,
-                        color: const Color(0xFF8A8F9E),
-                        size: 20,
-                      ),
-                    ),
-                  )),
+                        controller: passwordController,
+                        hintText: '••••••••',
+                        obscureText: obscurePassword.value,
+                        suffixIcon: GestureDetector(
+                          onTap: () =>
+                              obscurePassword.value = !obscurePassword.value,
+                          child: Icon(
+                            obscurePassword.value
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                            color: const Color(0xFF8A8F9E),
+                            size: 20,
+                          ),
+                        ),
+                      )),
 
                   const SizedBox(height: 10),
 
@@ -186,16 +186,16 @@ class _LoginViewState extends State<LoginView> {
 
                   // ── Sign In Button ─────────────────────────────
                   Obx(() => _CyberPrimaryButton(
-                    label: 'Sign in',
-                    isLoading: controller.isLoading.value,
-                    onPressed: () {
-                      if (!_validateFields()) return; // ← Validators guard
-                      controller.login(
-                        emailController.text.trim(),
-                        passwordController.text.trim(),
-                      );
-                    },
-                  )),
+                        label: 'Sign in',
+                        isLoading: controller.isLoading.value,
+                        onPressed: () {
+                          if (!_validateFields()) return; // ← Validators guard
+                          controller.login(
+                            emailController.text.trim(),
+                            passwordController.text.trim(),
+                          );
+                        },
+                      )),
 
                   const SizedBox(height: 24),
 
@@ -203,8 +203,8 @@ class _LoginViewState extends State<LoginView> {
                   Row(
                     children: const [
                       Expanded(
-                          child: Divider(
-                              color: Color(0xFF2A2D3A), thickness: 1)),
+                          child:
+                              Divider(color: Color(0xFF2A2D3A), thickness: 1)),
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
                         child: Text('or',
@@ -212,8 +212,8 @@ class _LoginViewState extends State<LoginView> {
                                 color: Color(0xFF8A8F9E), fontSize: 13)),
                       ),
                       Expanded(
-                          child: Divider(
-                              color: Color(0xFF2A2D3A), thickness: 1)),
+                          child:
+                              Divider(color: Color(0xFF2A2D3A), thickness: 1)),
                     ],
                   ),
 
@@ -221,11 +221,11 @@ class _LoginViewState extends State<LoginView> {
 
                   // ── Google Button ──────────────────────────────
                   Obx(() => _CyberSecondaryButton(
-                    label: 'Sign in with Google',
-                    isLoading: controller.isLoading.value,
-                    onPressed: controller.loginWithGoogle,
-                    showGoogleIcon: true,
-                  )),
+                        label: 'Sign in with Google',
+                        isLoading: controller.isLoading.value,
+                        onPressed: controller.loginWithGoogle,
+                        showGoogleIcon: true,
+                      )),
 
                   const SizedBox(height: 36),
 
@@ -235,8 +235,8 @@ class _LoginViewState extends State<LoginView> {
                     children: [
                       const Text(
                         "Don't have an account? ",
-                        style: TextStyle(
-                            color: Color(0xFF8A8F9E), fontSize: 14),
+                        style:
+                            TextStyle(color: Color(0xFF8A8F9E), fontSize: 14),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -293,8 +293,6 @@ class _CyberTextField extends StatelessWidget {
   final bool obscureText;
   final TextInputType keyboardType;
   final Widget? suffixIcon;
-  final void Function(String)? onChanged;
-  final Color? borderColor;
 
   const _CyberTextField({
     required this.controller,
@@ -302,8 +300,6 @@ class _CyberTextField extends StatelessWidget {
     this.obscureText = false,
     this.keyboardType = TextInputType.text,
     this.suffixIcon,
-    this.onChanged,
-    this.borderColor,
   });
 
   @override
@@ -312,38 +308,32 @@ class _CyberTextField extends StatelessWidget {
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
-      onChanged: onChanged,
       style: const TextStyle(color: Colors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle:
-        const TextStyle(color: Color(0xFF4A5568), fontSize: 15),
+        hintStyle: const TextStyle(color: Color(0xFF4A5568), fontSize: 15),
         filled: true,
         fillColor: const Color(0xFF1A1D26),
         suffixIcon: suffixIcon != null
             ? Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: suffixIcon,
-        )
+                padding: const EdgeInsets.only(right: 12),
+                child: suffixIcon,
+              )
             : null,
-        suffixIconConstraints:
-        const BoxConstraints(minWidth: 0, minHeight: 0),
+        suffixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
         contentPadding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-              color: borderColor ?? const Color(0xFF2A2D3A), width: 1),
+          borderSide: BorderSide(color: const Color(0xFF2A2D3A), width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-              color: borderColor ?? const Color(0xFF2A2D3A), width: 1),
+          borderSide: BorderSide(color: const Color(0xFF2A2D3A), width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-              color: borderColor ?? const Color(0xFF00E5A0), width: 1.5),
+          borderSide: BorderSide(color: const Color(0xFF00E5A0), width: 1.5),
         ),
       ),
     );
@@ -372,7 +362,7 @@ class _CyberPrimaryButton extends StatelessWidget {
           backgroundColor: const Color(0xFF00E5A0),
           foregroundColor: const Color(0xFF0D0F14),
           disabledBackgroundColor:
-          const Color(0xFF00E5A0).withOpacity(0.5),
+              const Color(0xFF00E5A0).withValues(alpha: 0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -380,20 +370,20 @@ class _CyberPrimaryButton extends StatelessWidget {
         ),
         child: isLoading
             ? const SizedBox(
-          width: 20,
-          height: 20,
-          child: CircularProgressIndicator(
-            strokeWidth: 2,
-            color: Color(0xFF0D0F14),
-          ),
-        )
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFF0D0F14),
+                ),
+              )
             : Text(
-          label,
-          style: const TextStyle(
-            fontSize: 15,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
+                label,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
       ),
     );
   }

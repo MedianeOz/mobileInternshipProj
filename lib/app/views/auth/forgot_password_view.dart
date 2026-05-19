@@ -5,7 +5,8 @@ import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 import '../../routes/app_routes.dart';
 
-class ForgotPasswordView extends StatefulWidget {    // ← was StatelessWidget
+class ForgotPasswordView extends StatefulWidget {
+  // ← was StatelessWidget
   const ForgotPasswordView({super.key});
 
   @override
@@ -14,13 +15,13 @@ class ForgotPasswordView extends StatefulWidget {    // ← was StatelessWidget
 
 class _ForgotPasswordViewState extends State<ForgotPasswordView> {
   late TextEditingController emailController;
-  late RxBool emailSent;                             // ← moved out of build()
+  late RxBool emailSent; // ← moved out of build()
 
   @override
   void initState() {
     super.initState();
     emailController = TextEditingController();
-    emailSent       = false.obs;
+    emailSent = false.obs;
 
     // ── Clear any stale error from a previous auth screen ──────
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -95,10 +96,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF00E5A0).withOpacity(0.08),
+                      color: const Color(0xFF00E5A0).withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: const Color(0xFF00E5A0).withOpacity(0.3),
+                          color: const Color(0xFF00E5A0).withValues(alpha: 0.3),
                           width: 1),
                     ),
                     child: Column(
@@ -136,10 +137,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                         horizontal: 14, vertical: 12),
                     margin: const EdgeInsets.only(bottom: 20),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFF4444).withOpacity(0.1),
+                      color: const Color(0xFFFF4444).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                          color: const Color(0xFFFF4444), width: 1),
+                      border:
+                          Border.all(color: const Color(0xFFFF4444), width: 1),
                     ),
                     child: Text(
                       controller.errorMessage.value,
@@ -165,21 +166,21 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                   style: const TextStyle(color: Colors.white, fontSize: 15),
                   decoration: InputDecoration(
                     hintText: 'mediane@email.com',
-                    hintStyle: const TextStyle(
-                        color: Color(0xFF4A5568), fontSize: 15),
+                    hintStyle:
+                        const TextStyle(color: Color(0xFF4A5568), fontSize: 15),
                     filled: true,
                     fillColor: const Color(0xFF1A1D26),
                     contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 16),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: Color(0xFF2A2D3A), width: 1),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF2A2D3A), width: 1),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                          color: Color(0xFF2A2D3A), width: 1),
+                      borderSide:
+                          const BorderSide(color: Color(0xFF2A2D3A), width: 1),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
@@ -199,26 +200,27 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                     onPressed: controller.isLoading.value
                         ? null
                         : () async {
-                      if (emailController.text.trim().isEmpty) {
-                        Get.snackbar(
-                          'Missing email',
-                          'Please enter your email address.',
-                          backgroundColor: const Color(0xFF1A1D26),
-                          colorText: Colors.white,
-                        );
-                        return;
-                      }
-                      await controller
-                          .resetPassword(emailController.text.trim());
-                      if (controller.errorMessage.value.isEmpty) {
-                        emailSent.value = true;    // ← safe: stable reference
-                      }
-                    },
+                            if (emailController.text.trim().isEmpty) {
+                              Get.snackbar(
+                                'Missing email',
+                                'Please enter your email address.',
+                                backgroundColor: const Color(0xFF1A1D26),
+                                colorText: Colors.white,
+                              );
+                              return;
+                            }
+                            await controller
+                                .resetPassword(emailController.text.trim());
+                            if (controller.errorMessage.value.isEmpty) {
+                              emailSent.value =
+                                  true; // ← safe: stable reference
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF00E5A0),
                       foregroundColor: const Color(0xFF0D0F14),
                       disabledBackgroundColor:
-                      const Color(0xFF00E5A0).withOpacity(0.5),
+                          const Color(0xFF00E5A0).withValues(alpha: 0.5),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(10),
@@ -226,20 +228,20 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                     ),
                     child: controller.isLoading.value
                         ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF0D0F14),
-                      ),
-                    )
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xFF0D0F14),
+                            ),
+                          )
                         : const Text(
-                      'Send reset link',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+                            'Send reset link',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
                 ),
 
@@ -249,7 +251,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                 Center(
                   child: GestureDetector(
                     onTap: () {
-                      controller.clearError();           // ← clear before navigating
+                      controller.clearError(); // ← clear before navigating
                       Get.toNamed(AppRoutes.LOGIN);
                     },
                     child: const Text(

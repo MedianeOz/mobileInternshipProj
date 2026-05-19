@@ -1,16 +1,22 @@
 import 'package:get/get.dart';
-import '../views/home/home_view.dart';
-import '../bindings/home_binding.dart';
+
 import '../bindings/auth_binding.dart';
+import '../bindings/home_binding.dart';
+import '../bindings/password_binding.dart';
+import '../bindings/shell_binding.dart';
+import '../bindings/threat_binding.dart';
+import '../views/auth/forgot_password_view.dart';
 import '../views/auth/login_view.dart';
 import '../views/auth/register_view.dart';
-import '../views/auth/forgot_password_view.dart';
+import '../views/home/home_view.dart';
+import '../views/home/threat_detail_view.dart';
+import '../views/password/password_checker_view.dart';
+import '../views/shell/main_shell_view.dart';
 import 'app_routes.dart';
 
 class AppPages {
   static final routes = [
-
-    // ── Auth screens ─────────────────────────────────────────────
+    // -- Auth screens --
     GetPage(
       name: AppRoutes.LOGIN,
       page: () => const LoginView(),
@@ -27,9 +33,14 @@ class AppPages {
       binding: AuthBinding(),
     ),
 
-    // ── Home screen ───────────────────────────────────────────────
-    // AuthBinding is included here so AuthController is available
-    // on the home screen (needed for logout + showing user email).
+    // -- Authenticated app shell --
+    GetPage(
+      name: AppRoutes.SHELL,
+      page: () => const MainShellView(),
+      binding: ShellBinding(),
+    ),
+
+    // -- Feature routes --
     GetPage(
       name: AppRoutes.HOME,
       page: () => const HomeView(),
@@ -38,8 +49,18 @@ class AppPages {
         HomeBinding(),
       ],
     ),
+    GetPage(
+      name: AppRoutes.THREAT_DETAIL,
+      page: () => const ThreatDetailView(),
+      binding: ThreatBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.PASSWORD_CHECKER,
+      page: () => const PasswordCheckerView(),
+      binding: PasswordBinding(),
+    ),
 
-    // ── Initial route (redirects to login) ───────────────────────
+    // -- Initial route --
     GetPage(
       name: AppRoutes.INITIAL,
       page: () => const LoginView(),

@@ -20,7 +20,6 @@ class HomeView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               const SizedBox(height: 48),
 
               // ── Brand ────────────────────────────────────────────
@@ -75,8 +74,7 @@ class HomeView extends StatelessWidget {
 
                     // ── Show logged-in email ────────────────────────
                     Obx(() {
-                      final email =
-                          auth.currentUser.value?.email ?? 'Unknown';
+                      final email = auth.currentUser.value?.email ?? 'Unknown';
                       return Text(
                         email,
                         style: const TextStyle(
@@ -94,13 +92,13 @@ class HomeView extends StatelessWidget {
               // ── Info banner ──────────────────────────────────────
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 14),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF00E5A0).withOpacity(0.07),
+                  color: const Color(0xFF00E5A0).withValues(alpha: 0.07),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: const Color(0xFF00E5A0).withOpacity(0.25),
+                    color: const Color(0xFF00E5A0).withValues(alpha: 0.25),
                     width: 1,
                   ),
                 ),
@@ -136,8 +134,8 @@ class HomeView extends StatelessWidget {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        backgroundColor: const Color(0xFFFF4444)
-                            .withOpacity(0.07),
+                        backgroundColor:
+                            const Color(0xFFFF4444).withValues(alpha: 0.07),
                       ),
                       child: auth.isLoading.value
                           ? const SizedBox(
