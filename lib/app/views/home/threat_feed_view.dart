@@ -23,6 +23,7 @@ class ThreatFeedView extends StatefulWidget {
 class _ThreatFeedViewState extends State<ThreatFeedView> {
   late final TextEditingController searchController;
   late final ScrollController scrollController;
+  late final ThreatFeedController threatController;
   Timer? _searchDebounce;
 
   @override
@@ -30,6 +31,9 @@ class _ThreatFeedViewState extends State<ThreatFeedView> {
     super.initState();
     searchController = TextEditingController();
     scrollController = ScrollController();
+    threatController = Get.isRegistered<ThreatFeedController>()
+        ? Get.find<ThreatFeedController>()
+        : Get.put(ThreatFeedController());
     scrollController.addListener(_handleScroll);
   }
 
@@ -46,20 +50,20 @@ class _ThreatFeedViewState extends State<ThreatFeedView> {
 
     final threshold = scrollController.position.maxScrollExtent - 220;
     if (scrollController.position.pixels >= threshold) {
-      Get.find<ThreatFeedController>().loadMoreThreats();
+      threatController.loadMoreThreats();
     }
   }
 
   void _handleSearchChanged(String value) {
     _searchDebounce?.cancel();
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-      Get.find<ThreatFeedController>().search(value);
+      threatController.search(value);
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final controller = Get.find<ThreatFeedController>();
+    final controller = threatController;
 
     return Scaffold(
       backgroundColor: AppColors.background,

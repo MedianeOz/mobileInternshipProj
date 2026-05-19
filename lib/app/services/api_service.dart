@@ -111,6 +111,12 @@ class ApiService {
 
       return threats;
     } on DioException catch (error) {
+      if (error.response?.statusCode == 404 &&
+          trimmedKeyword != null &&
+          trimmedKeyword.isNotEmpty) {
+        return <ThreatAdvisory>[];
+      }
+
       errorMessage = _mapNvdError(error);
       return <ThreatAdvisory>[];
     } catch (_) {
