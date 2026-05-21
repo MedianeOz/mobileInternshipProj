@@ -10,4 +10,9 @@ abstract class AppRoutes {
   static const ONBOARDING = '/onboarding';
   static const THREAT_DETAIL = '/threat-detail';
   static const PASSWORD_CHECKER = '/password-checker';
+  static const LIBRARY = '/library';
+  static const LIBRARY_CATEGORY = '/library/category';
+  static const LIBRARY_ARTICLE = '/library/article';
+  static const ALERTS = '/alerts';
+  static const PROFILE = '/profile';
 }

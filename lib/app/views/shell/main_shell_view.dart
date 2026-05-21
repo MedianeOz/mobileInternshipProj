@@ -1,16 +1,15 @@
 // lib/app/views/shell/main_shell_view.dart
 //
-// Persistent authenticated app shell with a four-tab bottom navigation bar.
-// IndexedStack preserves each tab's scroll and controller state.
+// Persistent authenticated app shell with the five Deliverable 6 tabs.
 
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
 
-import '../../controllers/auth_controller.dart';
-import '../../routes/app_routes.dart';
 import '../../utils/constants.dart';
+import '../alerts/alerts_view.dart';
 import '../home/threat_feed_view.dart';
+import '../knowledge_base/library_view.dart';
 import '../password/password_checker_view.dart';
+import '../profile/profile_view.dart';
 
 class MainShellView extends StatefulWidget {
   const MainShellView({super.key});
@@ -21,12 +20,14 @@ class MainShellView extends StatefulWidget {
 
 class _MainShellViewState extends State<MainShellView> {
   int currentIndex = 0;
+  final int unreadAlertCount = 0;
 
   final List<Widget> _tabs = const [
     ThreatFeedView(),
-    _ThreatsStubView(),
     PasswordCheckerView(),
-    _ProfileStubView(),
+    LibraryView(),
+    AlertsView(),
+    ProfileView(),
   ];
 
   @override
@@ -54,24 +55,35 @@ class _MainShellViewState extends State<MainShellView> {
           selectedFontSize: 11,
           unselectedFontSize: 11,
           elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
+          items: [
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
+              label: 'Feed',
+            ),
+            const BottomNavigationBarItem(
               icon: Icon(Icons.shield_outlined),
               activeIcon: Icon(Icons.shield),
-              label: 'Dashboard',
+              label: 'Shield',
+            ),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.menu_book_outlined),
+              activeIcon: Icon(Icons.menu_book),
+              label: 'Library',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.warning_amber_outlined),
-              activeIcon: Icon(Icons.warning_amber),
-              label: 'Threats',
+              icon: _AlertsNavIcon(
+                unreadAlertCount: unreadAlertCount,
+                isActive: false,
+              ),
+              activeIcon: _AlertsNavIcon(
+                unreadAlertCount: unreadAlertCount,
+                isActive: true,
+              ),
+              label: 'Alerts',
             ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.lock_outline),
-              activeIcon: Icon(Icons.lock),
-              label: 'Password',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline),
+            const BottomNavigationBarItem(
+              icon: Icon(Icons.person_outlined),
               activeIcon: Icon(Icons.person),
               label: 'Profile',
             ),
@@ -82,198 +94,35 @@ class _MainShellViewState extends State<MainShellView> {
   }
 }
 
-// -- Stub tabs --
-class _ThreatsStubView extends StatelessWidget {
-  const _ThreatsStubView();
+class _AlertsNavIcon extends StatelessWidget {
+  final int unreadAlertCount;
+  final bool isActive;
 
-  @override
-  Widget build(BuildContext context) {
-    return const _StubScaffold(
-      icon: Icons.warning_amber_outlined,
-      title: 'Threats',
-      subtitle:
-          'Saved advisories and deeper threat workflows will appear here.',
-    );
-  }
-}
-
-class _ProfileStubView extends StatelessWidget {
-  const _ProfileStubView();
-
-  @override
-  Widget build(BuildContext context) {
-    final auth = Get.find<AuthController>();
-
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 28),
-              const Center(
-                child: Text(
-                  AppStrings.appName,
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 2.5,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 36),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Profile',
-                      style: TextStyle(
-                        color: AppColors.white,
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Obx(
-                      () => Text(
-                        auth.currentUser.value?.email ?? 'Signed in user',
-                        style: const TextStyle(
-                          color: AppColors.textMuted,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 18),
-                    const Text(
-                      'Watchlists, alert preferences, and account controls will live here.',
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 14,
-                        height: 1.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              Obx(
-                () => SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: auth.isLoading.value
-                        ? null
-                        : () async {
-                            await auth.logout();
-                            Get.offAllNamed(AppRoutes.LOGIN);
-                          },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.danger,
-                      side: const BorderSide(
-                        color: AppColors.danger,
-                        width: 1.5,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      backgroundColor: AppColors.danger.withValues(alpha: 0.07),
-                    ),
-                    child: auth.isLoading.value
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: AppColors.danger,
-                            ),
-                          )
-                        : const Text(
-                            'Sign out',
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.danger,
-                            ),
-                          ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 32),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _StubScaffold extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-
-  const _StubScaffold({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
+  const _AlertsNavIcon({
+    required this.unreadAlertCount,
+    required this.isActive,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Center(
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Icon(isActive ? Icons.notifications : Icons.notifications_outlined),
+        if (unreadAlertCount > 0)
+          Positioned(
+            right: -1,
+            top: -1,
             child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.border),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: AppColors.primary, size: 42),
-                  const SizedBox(height: 16),
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: AppColors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    subtitle,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 14,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
+              width: 8,
+              height: 8,
+              decoration: const BoxDecoration(
+                color: AppColors.danger,
+                shape: BoxShape.circle,
               ),
             ),
           ),
-        ),
-      ),
+      ],
     );
   }
 }

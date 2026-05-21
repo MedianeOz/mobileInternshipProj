@@ -4,7 +4,7 @@ class Validators {
   Validators._(); // static-only class
 
   static final RegExp _emailRegex =
-  RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
+      RegExp(r'^[\w.+\-]+@[\w\-]+\.[a-z]{2,}$', caseSensitive: false);
 
   static String? email(String value) {
     final t = value.trim();

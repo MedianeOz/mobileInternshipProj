@@ -5,10 +5,13 @@
 import 'package:get/get.dart';
 
 import '../controllers/auth_controller.dart';
+import '../controllers/knowledge_controller.dart';
 import '../controllers/password_controller.dart';
+import '../controllers/profile_controller.dart';
 import '../controllers/threat_feed_controller.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/storage_service.dart';
 
 class ShellBinding extends Bindings {
   @override
@@ -22,11 +25,20 @@ class ShellBinding extends Bindings {
     if (!Get.isRegistered<ApiService>()) {
       Get.put(ApiService());
     }
+    if (!Get.isRegistered<StorageService>()) {
+      Get.put(StorageService());
+    }
     if (!Get.isRegistered<ThreatFeedController>()) {
       Get.put(ThreatFeedController());
     }
     if (!Get.isRegistered<PasswordController>()) {
       Get.put(PasswordController());
+    }
+    if (!Get.isRegistered<KnowledgeController>()) {
+      Get.put(KnowledgeController());
+    }
+    if (!Get.isRegistered<ProfileController>()) {
+      Get.put(ProfileController());
     }
   }
 }

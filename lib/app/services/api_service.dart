@@ -150,7 +150,6 @@ class ApiService {
           return PasswordCheckResult(
             isPwned: true,
             breachCount: count,
-            password: password,
           );
         }
       }
@@ -158,21 +157,18 @@ class ApiService {
       return PasswordCheckResult(
         isPwned: false,
         breachCount: 0,
-        password: password,
       );
     } on DioException catch (_) {
       errorMessage = 'Could not connect to breach database. Please try again.';
       return PasswordCheckResult(
         isPwned: false,
         breachCount: 0,
-        password: password,
       );
     } catch (_) {
       errorMessage = 'Could not connect to breach database. Please try again.';
       return PasswordCheckResult(
         isPwned: false,
         breachCount: 0,
-        password: password,
       );
     }
   }

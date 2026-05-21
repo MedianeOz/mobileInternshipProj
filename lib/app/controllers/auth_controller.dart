@@ -10,7 +10,7 @@ class AuthController extends GetxController {
   RxString errorMessage = ''.obs;
   Rxn<User> currentUser = Rxn<User>();
 
-  late StreamSubscription<User?> _authSub;   // ← store the subscription
+  late StreamSubscription<User?> _authSub; // ← store the subscription
 
   @override
   void onInit() {
@@ -27,7 +27,7 @@ class AuthController extends GetxController {
 
   @override
   void onClose() {
-    _authSub.cancel();   // ← cancel on controller disposal
+    _authSub.cancel(); // ← cancel on controller disposal
     super.onClose();
   }
 
@@ -40,8 +40,7 @@ class AuthController extends GetxController {
     isLoading.value = true;
 
     try {
-      final credential =
-      await _authService.signUpWithEmail(email, password);
+      final credential = await _authService.signUpWithEmail(email, password);
       currentUser.value = credential.user;
     } on FirebaseAuthException catch (e) {
       errorMessage.value = _mapError(e.code);
@@ -58,8 +57,7 @@ class AuthController extends GetxController {
     isLoading.value = true;
 
     try {
-      final credential =
-      await _authService.signInWithEmail(email, password);
+      final credential = await _authService.signInWithEmail(email, password);
       currentUser.value = credential.user;
     } on FirebaseAuthException catch (e) {
       errorMessage.value = _mapError(e.code);
@@ -128,7 +126,7 @@ class AuthController extends GetxController {
   // ── Error Mapping ────────────────────────────────────────────
   String _mapError(String code) {
     switch (code) {
-    // ── Email / password ──
+      // ── Email / password ──
       case 'invalid-email':
         return 'Please enter a valid email address.';
       case 'user-not-found':
@@ -136,7 +134,7 @@ class AuthController extends GetxController {
       case 'wrong-password':
         return 'Incorrect password. Please try again.';
       case 'invalid-credential':
-      // Firebase v10+ merges user-not-found + wrong-password into this
+        // Firebase v10+ merges user-not-found + wrong-password into this
         return 'Invalid email or password.';
       case 'email-already-in-use':
         return 'An account with this email already exists.';
@@ -145,13 +143,13 @@ class AuthController extends GetxController {
       case 'operation-not-allowed':
         return 'This sign-in method is not enabled.';
 
-    // ── Account state ──
+      // ── Account state ──
       case 'user-disabled':
         return 'This account has been disabled.';
       case 'too-many-requests':
         return 'Too many attempts. Please wait a moment and try again.';
 
-    // ── Network ──
+      // ── Network ──
       case 'network-request-failed':
         return 'No internet connection. Please check your network.';
 
@@ -164,11 +162,11 @@ class AuthController extends GetxController {
       case 'invalid-action-code':
         return 'This reset link is invalid or has already been used.';
 
-    // ── Google ──
+      // ── Google ──
       case 'google-sign-in-aborted':
         return ''; // User cancelled — do not show an error
 
-    // ── Fallback ──
+      // ── Fallback ──
       default:
         return 'Something went wrong ($code). Please try again.';
     }
