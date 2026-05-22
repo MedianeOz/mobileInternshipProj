@@ -8,11 +8,12 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
-import 'package:hive/hive.dart';
+import 'package:get/get.dart';
 
 import '../models/password_check_result.dart';
 import '../models/threat_advisory.dart';
 import '../utils/constants.dart';
+import 'storage_service.dart';
 
 class ApiService {
   late final Dio _dio;
@@ -156,6 +157,29 @@ class ApiService {
     }
   }
 
+  List<ThreatAdvisory> getCachedThreats(String cacheKey) {
+    final cached = Get.find<StorageService>().getCachedThreatPage(cacheKey);
+    return cached.map(ThreatAdvisory.fromCache).toList();
+  }
+
+  String buildThreatCacheKey({
+    required int page,
+    String? keyword,
+    String? severity,
+  }) {
+    final publishWindow = _recentPublishWindow();
+    final trimmedKeyword = keyword?.trim() ?? '';
+    final normalizedSeverity = severity?.trim().toUpperCase() ?? '';
+
+    return _cacheKey(
+      page: page,
+      keyword: trimmedKeyword,
+      severity: normalizedSeverity,
+      publishStartDate: _formatNvdDate(publishWindow.start),
+      publishEndDate: _formatNvdDate(publishWindow.end),
+    );
+  }
+
   // -- HIBP password range check --
   Future<PasswordCheckResult> checkPassword(String password) async {
     errorMessage = '';
@@ -233,7 +257,6 @@ class ApiService {
     required List<ThreatAdvisory> threats,
   }) async {
     try {
-      final box = await Hive.openBox<dynamic>(AppHiveBoxes.threatCache);
       final key = _cacheKey(
         page: page,
         keyword: keyword,
@@ -241,9 +264,9 @@ class ApiService {
         publishStartDate: publishStartDate,
         publishEndDate: publishEndDate,
       );
-      await box.put(
-        key,
-        threats.map((threat) => threat.toCacheJson()).toList(),
+      await Get.find<StorageService>().saveThreatPage(
+        cacheKey: key,
+        serialized: threats.map((threat) => threat.toCacheJson()).toList(),
       );
     } catch (_) {
       // Cache writes should never block the live API experience.

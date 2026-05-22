@@ -104,6 +104,20 @@ class _ThreatFeedViewState extends State<ThreatFeedView> {
                 ),
               ),
               const SizedBox(height: 14),
+              Obx(() {
+                if (!controller.isOffline.value &&
+                    !controller.isShowingCachedData.value) {
+                  return const SizedBox.shrink();
+                }
+
+                final message = controller.isOffline.value
+                    ? 'Offline · showing cached results'
+                    : 'Network error · showing cached results';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: _CachedDataBanner(text: message),
+                );
+              }),
               Obx(
                 () => _SeverityFilters(
                   selectedSeverity: controller.selectedSeverity.value,
@@ -140,7 +154,9 @@ class _ThreatFeedViewState extends State<ThreatFeedView> {
                     backgroundColor: AppColors.surface,
                     onRefresh: () => controller.fetchThreats(refresh: true),
                     child: controller.threats.isEmpty
-                        ? const _EmptyThreatState()
+                        ? controller.isOffline.value
+                            ? const _OfflineEmptyState()
+                            : const _EmptyThreatState()
                         : ListView.builder(
                             controller: scrollController,
                             physics: const AlwaysScrollableScrollPhysics(),
@@ -369,6 +385,47 @@ class _ErrorBanner extends StatelessWidget {
   }
 }
 
+class _CachedDataBanner extends StatelessWidget {
+  final String text;
+
+  const _CachedDataBanner({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.warning),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(
+              color: AppColors.warning,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(
+                color: AppColors.textMuted,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _EmptyThreatState extends StatelessWidget {
   const _EmptyThreatState();
 
@@ -399,6 +456,49 @@ class _EmptyThreatState extends StatelessWidget {
           child: Text(
             'Try another search or severity filter.',
             style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OfflineEmptyState extends StatelessWidget {
+  const _OfflineEmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: const [
+        SizedBox(height: 120),
+        Icon(
+          Icons.wifi_off_outlined,
+          color: AppColors.textMuted,
+          size: 52,
+        ),
+        SizedBox(height: 16),
+        Center(
+          child: Text(
+            "You're offline",
+            style: TextStyle(
+              color: AppColors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        SizedBox(height: 8),
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: 18),
+          child: Text(
+            'No cached threats available. Connect to load the latest CVEs.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 13,
+              height: 1.4,
+            ),
           ),
         ),
       ],

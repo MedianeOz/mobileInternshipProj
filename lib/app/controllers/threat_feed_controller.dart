@@ -3,6 +3,9 @@
 // Coordinates NVD threat feed loading, filters, search, pagination, and
 // user-facing error state for the dashboard screen.
 
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:get/get.dart';
 
 import '../models/threat_advisory.dart';
@@ -19,11 +22,26 @@ class ThreatFeedController extends GetxController {
   RxString searchKeyword = ''.obs;
   RxInt currentPage = 0.obs;
   RxBool hasMorePages = true.obs;
+  RxBool isOffline = false.obs;
+  RxBool isShowingCachedData = false.obs;
+
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
   @override
   void onInit() {
     super.onInit();
-    fetchThreats(refresh: true);
+    unawaited(_bootstrap());
+  }
+
+  @override
+  void onClose() {
+    _connectivitySubscription?.cancel();
+    super.onClose();
+  }
+
+  Future<void> _bootstrap() async {
+    await _watchConnectivity();
+    await fetchThreats(refresh: true);
   }
 
   // -- Initial and refreshed loading --
@@ -37,22 +55,49 @@ class ThreatFeedController extends GetxController {
     }
 
     try {
+      final cachedThreats = _cachedThreatsForCurrentFilters();
+      if (isOffline.value) {
+        if (cachedThreats.isNotEmpty) {
+          _showCachedThreats(cachedThreats);
+        } else {
+          threats.clear();
+          hasMorePages.value = false;
+          errorMessage.value = '';
+          isShowingCachedData.value = false;
+        }
+        return;
+      }
+
       final results = await _apiService.fetchThreats(
         page: 0,
         keyword: searchKeyword.value,
         severity: selectedSeverity.value,
       );
 
+      if (_apiService.errorMessage.isNotEmpty) {
+        if (cachedThreats.isNotEmpty) {
+          _showCachedThreats(cachedThreats);
+          return;
+        }
+
+        errorMessage.value = _apiService.errorMessage;
+        isShowingCachedData.value = false;
+        return;
+      }
+
       threats.assignAll(_newestFirst(results));
       currentPage.value = 0;
       hasMorePages.value = _apiService.hasMoreThreatPages;
-
-      if (_apiService.errorMessage.isNotEmpty) {
-        errorMessage.value = _apiService.errorMessage;
-      }
+      isShowingCachedData.value = false;
     } catch (_) {
-      errorMessage.value =
-          'Could not load threat intelligence. Please try again.';
+      final cachedThreats = _cachedThreatsForCurrentFilters();
+      if (cachedThreats.isNotEmpty) {
+        _showCachedThreats(cachedThreats);
+      } else {
+        errorMessage.value =
+            'Could not load threat intelligence. Please try again.';
+        isShowingCachedData.value = false;
+      }
     } finally {
       isLoading.value = false;
     }
@@ -63,6 +108,10 @@ class ThreatFeedController extends GetxController {
     errorMessage.value = '';
 
     if (isLoading.value || isLoadingMore.value || !hasMorePages.value) {
+      return;
+    }
+
+    if (isOffline.value || isShowingCachedData.value) {
       return;
     }
 
@@ -90,6 +139,62 @@ class ThreatFeedController extends GetxController {
     } finally {
       isLoadingMore.value = false;
     }
+  }
+
+  Future<void> _watchConnectivity() async {
+    final connectivity = Connectivity();
+    final initial = await connectivity.checkConnectivity();
+    _updateOfflineState(initial);
+    _connectivitySubscription =
+        connectivity.onConnectivityChanged.listen(_updateOfflineState);
+  }
+
+  void _updateOfflineState(List<ConnectivityResult> results) {
+    isOffline.value = results.contains(ConnectivityResult.none);
+  }
+
+  void _showCachedThreats(List<ThreatAdvisory> cachedThreats) {
+    threats.assignAll(_newestFirst(cachedThreats));
+    currentPage.value = 0;
+    hasMorePages.value = false;
+    errorMessage.value = '';
+    isShowingCachedData.value = true;
+  }
+
+  List<ThreatAdvisory> _cachedThreatsForCurrentFilters() {
+    final cacheKey = _apiService.buildThreatCacheKey(
+      page: 0,
+      keyword: searchKeyword.value,
+      severity: selectedSeverity.value,
+    );
+    final filteredCache = _apiService.getCachedThreats(cacheKey);
+    if (filteredCache.isNotEmpty) return filteredCache;
+
+    final baseCacheKey = _apiService.buildThreatCacheKey(page: 0);
+    final baseCache = _apiService.getCachedThreats(baseCacheKey);
+    return _applyLocalFilters(baseCache);
+  }
+
+  List<ThreatAdvisory> _applyLocalFilters(List<ThreatAdvisory> cachedThreats) {
+    Iterable<ThreatAdvisory> results = cachedThreats;
+
+    final severity = selectedSeverity.value.trim().toUpperCase();
+    if (severity.isNotEmpty) {
+      results = results.where(
+        (threat) => threat.severity.toUpperCase() == severity,
+      );
+    }
+
+    final keyword = searchKeyword.value.trim().toLowerCase();
+    if (keyword.isNotEmpty) {
+      results = results.where((threat) {
+        return threat.id.toLowerCase().contains(keyword) ||
+            threat.description.toLowerCase().contains(keyword) ||
+            threat.severity.toLowerCase().contains(keyword);
+      });
+    }
+
+    return results.toList();
   }
 
   // -- Filtering and search --

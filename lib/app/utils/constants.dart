@@ -35,4 +35,5 @@ class AppHiveBoxes {
   AppHiveBoxes._();
 
   static const threatCache = 'threat_cache';
+  static const profileCache = 'user_profile';
 }

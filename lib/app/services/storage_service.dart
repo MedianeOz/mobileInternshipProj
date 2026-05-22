@@ -10,15 +10,21 @@ class StorageService {
   static const knowledgeArticlesBox = 'knowledge_articles';
   static const bookmarksBox = 'bookmarks';
   static const syncMetaBox = 'sync_meta';
+  static const threatCacheBox = 'threat_cache';
+  static const profileBox = 'user_profile';
 
   Box<dynamic>? _articlesBox;
   Box<dynamic>? _bookmarksBox;
   Box<dynamic>? _syncMetaBox;
+  Box<dynamic>? _threatCacheBox;
+  Box<dynamic>? _profileBox;
 
   Future<void> init() async {
     _articlesBox ??= await Hive.openBox<dynamic>(knowledgeArticlesBox);
     _bookmarksBox ??= await Hive.openBox<dynamic>(bookmarksBox);
     _syncMetaBox ??= await Hive.openBox<dynamic>(syncMetaBox);
+    _threatCacheBox ??= await Hive.openBox<dynamic>(threatCacheBox);
+    _profileBox ??= await Hive.openBox<dynamic>(profileBox);
   }
 
   Future<void> saveArticles(List<KnowledgeArticle> articles) async {
@@ -66,8 +72,72 @@ class StorageService {
     await _syncMetaBox!.put('last_sync', dt.toIso8601String());
   }
 
+  Future<void> saveThreatPage({
+    required String cacheKey,
+    required List<Map<String, dynamic>> serialized,
+  }) async {
+    await init();
+    await _threatCacheBox!.put(cacheKey, serialized);
+  }
+
+  List<Map<String, dynamic>> getCachedThreatPage(String cacheKey) {
+    final exact = _readThreatPage(cacheKey);
+    if (exact.isNotEmpty) return exact;
+
+    final matchingKey = _newestMatchingThreatKey(cacheKey);
+    if (matchingKey == null) return <Map<String, dynamic>>[];
+    return _readThreatPage(matchingKey);
+  }
+
+  Future<void> clearThreatCache() async {
+    await init();
+    await _threatCacheBox!.clear();
+  }
+
+  Future<void> saveProfile(Map<String, dynamic> profileJson) async {
+    await init();
+    await _profileBox!.put('profile', profileJson);
+  }
+
+  Map<String, dynamic>? loadProfile() {
+    final raw = _profileBox?.get('profile');
+    if (raw is! Map) return null;
+    return Map<String, dynamic>.from(raw);
+  }
+
   List<KnowledgeArticle> getStaticArticles() {
     return staticArticleData.map(KnowledgeArticle.fromJson).toList();
+  }
+
+  List<Map<String, dynamic>> _readThreatPage(String cacheKey) {
+    final raw = _threatCacheBox?.get(cacheKey);
+    if (raw is! List) return <Map<String, dynamic>>[];
+
+    return raw
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList();
+  }
+
+  String? _newestMatchingThreatKey(String cacheKey) {
+    final prefix = _threatFilterPrefix(cacheKey);
+    if (prefix == null) return null;
+
+    final keys = _threatCacheBox?.keys ?? const Iterable<dynamic>.empty();
+    final matches = keys
+        .map((key) => key.toString())
+        .where((key) => key.startsWith(prefix))
+        .toList()
+      ..sort();
+
+    if (matches.isEmpty) return null;
+    return matches.last;
+  }
+
+  String? _threatFilterPrefix(String cacheKey) {
+    final markerIndex = cacheKey.indexOf('|pubStart=');
+    if (markerIndex <= 0) return null;
+    return '${cacheKey.substring(0, markerIndex)}|';
   }
 
   static const List<Map<String, dynamic>> staticArticleData = [

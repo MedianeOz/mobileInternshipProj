@@ -1,14 +1,18 @@
 // lib/app/controllers/profile_controller.dart
 
+import 'dart:async';
+
 import 'package:get/get.dart';
 
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
+import '../services/storage_service.dart';
 import 'auth_controller.dart';
 
 class ProfileController extends GetxController {
   final AuthController authController = Get.find<AuthController>();
   final AuthService authService = Get.find<AuthService>();
+  final StorageService _storageService = Get.find<StorageService>();
 
   Rx<UserProfile> userProfile = const UserProfile(
     uid: '',
@@ -26,6 +30,7 @@ class ProfileController extends GetxController {
   void onInit() {
     super.onInit();
     _populateFromCurrentUser();
+    _loadPersistedProfile();
   }
 
   void addTechnology(String name) {
@@ -37,6 +42,7 @@ class ProfileController extends GetxController {
     if (exists) return;
     watchlist.add(value);
     _syncProfile();
+    _saveProfile();
   }
 
   void removeTechnology(String name) {
@@ -44,6 +50,7 @@ class ProfileController extends GetxController {
       (item) => item.toLowerCase() == name.toLowerCase(),
     );
     _syncProfile();
+    _saveProfile();
   }
 
   Future<void> syncNow() async {
@@ -53,16 +60,19 @@ class ProfileController extends GetxController {
   void setCriticalAlerts(bool value) {
     criticalAlertsEnabled.value = value;
     _syncProfile();
+    _saveProfile();
   }
 
   void setQuietHours(bool value) {
     quietHoursEnabled.value = value;
     _syncProfile();
+    _saveProfile();
   }
 
   void setAllNotifications(bool value) {
     allNotificationsEnabled.value = value;
     _syncProfile();
+    _saveProfile();
   }
 
   String get displayInitials {
@@ -120,6 +130,29 @@ class ProfileController extends GetxController {
     lastSyncTime.value = DateTime.now();
   }
 
+  void _loadPersistedProfile() {
+    final persisted = _storageService.loadProfile();
+    if (persisted == null) return;
+
+    final savedProfile = UserProfile.fromJson(persisted);
+    final current = userProfile.value;
+    criticalAlertsEnabled.value = savedProfile.criticalAlertsEnabled;
+    quietHoursEnabled.value = savedProfile.quietHoursEnabled;
+    allNotificationsEnabled.value = savedProfile.allNotificationsEnabled;
+    watchlist.assignAll(savedProfile.watchlist);
+    userProfile.value = UserProfile(
+      uid: current.uid.isNotEmpty ? current.uid : savedProfile.uid,
+      email: current.email.isNotEmpty ? current.email : savedProfile.email,
+      displayName: current.displayName.isNotEmpty
+          ? current.displayName
+          : savedProfile.displayName,
+      watchlist: savedProfile.watchlist,
+      criticalAlertsEnabled: savedProfile.criticalAlertsEnabled,
+      quietHoursEnabled: savedProfile.quietHoursEnabled,
+      allNotificationsEnabled: savedProfile.allNotificationsEnabled,
+    );
+  }
+
   String _nameFromEmail(String email) {
     if (email.isEmpty) return 'CyberShield User';
     final localPart = email.split('@').first;
@@ -141,5 +174,9 @@ class ProfileController extends GetxController {
       quietHoursEnabled: quietHoursEnabled.value,
       allNotificationsEnabled: allNotificationsEnabled.value,
     );
+  }
+
+  void _saveProfile() {
+    unawaited(_storageService.saveProfile(userProfile.value.toJson()));
   }
 }
