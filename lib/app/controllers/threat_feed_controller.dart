@@ -44,7 +44,7 @@ class ThreatFeedController extends GetxController {
         severity: selectedSeverity.value,
       );
 
-      threats.assignAll(results);
+      threats.assignAll(_newestFirst(results));
       currentPage.value = 0;
       hasMorePages.value = results.length == AppStrings.nvdResultsPerPage;
 
@@ -83,6 +83,7 @@ class ThreatFeedController extends GetxController {
       }
 
       threats.addAll(results);
+      threats.assignAll(_newestFirst(threats));
       currentPage.value = nextPage;
       hasMorePages.value = results.length == AppStrings.nvdResultsPerPage;
     } catch (_) {
@@ -110,5 +111,10 @@ class ThreatFeedController extends GetxController {
     selectedSeverity.value = '';
     searchKeyword.value = '';
     await fetchThreats(refresh: true);
+  }
+
+  List<ThreatAdvisory> _newestFirst(Iterable<ThreatAdvisory> items) {
+    return items.toList()
+      ..sort((a, b) => b.publishedDate.compareTo(a.publishedDate));
   }
 }

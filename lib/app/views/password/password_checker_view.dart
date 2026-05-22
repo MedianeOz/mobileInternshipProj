@@ -320,7 +320,7 @@ class _AnalysisCard extends StatelessWidget {
               Expanded(
                 child: _StatItem(
                   label: 'Uppercase',
-                  value: result.hasUppercase ? '✓' : '✗',
+                  value: result.hasUppercase ? 'Yes' : 'No',
                   valueColor: result.hasUppercase
                       ? AppColors.primary
                       : AppColors.danger,
@@ -329,7 +329,7 @@ class _AnalysisCard extends StatelessWidget {
               Expanded(
                 child: _StatItem(
                   label: 'Numbers',
-                  value: result.hasNumbers ? '✓' : '✗',
+                  value: result.hasNumbers ? 'Yes' : 'No',
                   valueColor:
                       result.hasNumbers ? AppColors.primary : AppColors.danger,
                 ),
@@ -342,7 +342,7 @@ class _AnalysisCard extends StatelessWidget {
               Expanded(
                 child: _StatItem(
                   label: 'Symbols',
-                  value: result.hasSymbols ? '✓' : '✗',
+                  value: result.hasSymbols ? 'Yes' : 'No',
                   valueColor:
                       result.hasSymbols ? AppColors.primary : AppColors.danger,
                 ),
@@ -428,7 +428,7 @@ class _BreachResultCard extends StatelessWidget {
         : 'Not found in breaches';
     final subtitle = isPwned
         ? 'This password is compromised. Change it immediately.'
-        : 'Checked via HIBP k-anonymity · your password never left this device';
+        : 'Checked via HIBP k-anonymity - your password never left this device';
 
     return Container(
       width: double.infinity,
@@ -555,38 +555,40 @@ class _ImprovementTipCard extends StatelessWidget {
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(width: 3, color: AppColors.warning),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tip to reach Very Strong',
-                    style: TextStyle(
-                      color: AppColors.warning,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(width: 3, color: AppColors.warning),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Tip to reach Very Strong',
+                      style: TextStyle(
+                        color: AppColors.warning,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    tip,
-                    style: const TextStyle(
-                      color: AppColors.textMuted,
-                      fontSize: 13,
-                      height: 1.4,
+                    const SizedBox(height: 6),
+                    Text(
+                      tip,
+                      style: const TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

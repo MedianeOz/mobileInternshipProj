@@ -46,7 +46,7 @@ class ProfileView extends StatelessWidget {
             Obx(
               () => _NotificationCard(
                 title: 'Critical alerts',
-                subtitle: 'CVSS ≥ 9.0',
+                subtitle: 'CVSS >= 9.0',
                 value: controller.criticalAlertsEnabled.value,
                 onChanged: controller.setCriticalAlerts,
               ),
@@ -79,7 +79,7 @@ class ProfileView extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${controller.timeAgo} · ',
+                      '${controller.timeAgo} - ',
                       style: const TextStyle(
                         color: AppColors.textMuted,
                         fontSize: 13,
@@ -118,97 +118,11 @@ class ProfileView extends StatelessWidget {
   }
 
   void _showAddTechnologyDialog(ProfileController controller) {
-    final textController = TextEditingController();
     Get.dialog<void>(
-      Center(
-        child: Material(
-          color: Colors.transparent,
-          child: Container(
-            width: Get.width - 48,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Add technology',
-                  style: TextStyle(
-                    color: AppColors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: textController,
-                  autofocus: true,
-                  style: const TextStyle(color: AppColors.white, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: 'e.g. React Native',
-                    hintStyle: const TextStyle(
-                      color: AppColors.textHint,
-                      fontSize: 15,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.background,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.border),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(
-                        color: AppColors.primary,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      controller.addTechnology(textController.text);
-                      Get.back<void>();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: AppColors.background,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'Add',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
+      _AddTechnologyDialog(
+        onAdd: controller.addTechnology,
       ),
-    ).whenComplete(textController.dispose);
+    );
   }
 
   void _showSignOutDialog(ProfileController controller) {
@@ -293,6 +207,131 @@ class ProfileView extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+class _AddTechnologyDialog extends StatefulWidget {
+  final ValueChanged<String> onAdd;
+
+  const _AddTechnologyDialog({required this.onAdd});
+
+  @override
+  State<_AddTechnologyDialog> createState() => _AddTechnologyDialogState();
+}
+
+class _AddTechnologyDialogState extends State<_AddTechnologyDialog> {
+  late final TextEditingController textController;
+
+  @override
+  void initState() {
+    super.initState();
+    textController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    textController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: Get.width - 48,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Add technology',
+                style: TextStyle(
+                  color: AppColors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: textController,
+                autofocus: true,
+                textInputAction: TextInputAction.done,
+                onSubmitted: _submit,
+                style: const TextStyle(color: AppColors.white, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: 'e.g. React Native',
+                  hintStyle: const TextStyle(
+                    color: AppColors.textHint,
+                    fontSize: 15,
+                  ),
+                  filled: true,
+                  fillColor: AppColors.background,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 16,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: AppColors.primary,
+                      width: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: () => _submit(textController.text),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.background,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: const Text(
+                    'Add',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _submit(String value) {
+    final technology = value.trim();
+    if (technology.isEmpty) {
+      return;
+    }
+    widget.onAdd(technology);
+    Get.back<void>();
   }
 }
 
