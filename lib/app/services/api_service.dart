@@ -16,6 +16,8 @@ import '../utils/constants.dart';
 import 'storage_service.dart';
 
 class ApiService {
+  static const int _threatTailWindowSize = AppStrings.nvdResultsPerPage * 25;
+
   late final Dio _dio;
 
   String errorMessage = '';
@@ -128,9 +130,12 @@ class ApiService {
           .map((item) => item is Map<String, dynamic> ? item['cve'] : null)
           .whereType<Map<String, dynamic>>()
           .map(ThreatAdvisory.fromJson)
-          .toList();
+          .toList()
+        ..sort((a, b) => b.publishedDate.compareTo(a.publishedDate));
 
-      hasMoreThreatPages = pageBounds.startIndex > 0;
+      final pageThreats = threats.take(AppStrings.nvdResultsPerPage).toList();
+
+      hasMoreThreatPages = pageBounds.hasMore;
 
       await _cacheThreats(
         page: page,
@@ -138,10 +143,10 @@ class ApiService {
         severity: normalizedSeverity ?? '',
         publishStartDate: baseQueryParameters['pubStartDate'].toString(),
         publishEndDate: baseQueryParameters['pubEndDate'].toString(),
-        threats: threats,
+        threats: pageThreats,
       );
 
-      return threats;
+      return pageThreats;
     } on DioException catch (error) {
       if (error.response?.statusCode == 404 &&
           trimmedKeyword != null &&
@@ -314,13 +319,20 @@ class ApiService {
     final pageSize = AppStrings.nvdResultsPerPage;
     final endExclusive = totalResults - (safePage * pageSize);
     if (endExclusive <= 0) {
-      return const _ThreatPageBounds(startIndex: 0, count: 0);
+      return const _ThreatPageBounds(
+        startIndex: 0,
+        count: 0,
+        hasMore: false,
+      );
     }
 
-    final startIndex = endExclusive > pageSize ? endExclusive - pageSize : 0;
+    final startIndex = endExclusive > _threatTailWindowSize
+        ? endExclusive - _threatTailWindowSize
+        : 0;
     return _ThreatPageBounds(
       startIndex: startIndex,
       count: endExclusive - startIndex,
+      hasMore: endExclusive > pageSize,
     );
   }
 
@@ -347,9 +359,11 @@ class ApiService {
 class _ThreatPageBounds {
   final int startIndex;
   final int count;
+  final bool hasMore;
 
   const _ThreatPageBounds({
     required this.startIndex,
     required this.count,
+    required this.hasMore,
   });
 }

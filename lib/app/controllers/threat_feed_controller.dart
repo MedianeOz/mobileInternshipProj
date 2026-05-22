@@ -13,6 +13,8 @@ import '../services/api_service.dart';
 
 class ThreatFeedController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
+  final List<ThreatAdvisory> _allThreats = <ThreatAdvisory>[];
+  int _fetchGeneration = 0;
 
   RxList<ThreatAdvisory> threats = <ThreatAdvisory>[].obs;
   RxBool isLoading = false.obs;
@@ -45,7 +47,13 @@ class ThreatFeedController extends GetxController {
   }
 
   // -- Initial and refreshed loading --
-  Future<void> fetchThreats({bool refresh = false}) async {
+  Future<void> fetchThreats({
+    bool refresh = false,
+    bool useRemoteSeverity = false,
+  }) async {
+    final generation = ++_fetchGeneration;
+    final shouldUseRemoteSeverity =
+        useRemoteSeverity || selectedSeverity.value.isNotEmpty;
     errorMessage.value = '';
     isLoading.value = true;
 
@@ -55,11 +63,14 @@ class ThreatFeedController extends GetxController {
     }
 
     try {
-      final cachedThreats = _cachedThreatsForCurrentFilters();
+      final cachedThreats = _cachedThreatsForCurrentState(
+        useRemoteSeverity: shouldUseRemoteSeverity,
+      );
       if (isOffline.value) {
         if (cachedThreats.isNotEmpty) {
           _showCachedThreats(cachedThreats);
         } else {
+          _allThreats.clear();
           threats.clear();
           hasMorePages.value = false;
           errorMessage.value = '';
@@ -70,9 +81,10 @@ class ThreatFeedController extends GetxController {
 
       final results = await _apiService.fetchThreats(
         page: 0,
-        keyword: searchKeyword.value,
-        severity: selectedSeverity.value,
+        severity: shouldUseRemoteSeverity ? selectedSeverity.value : null,
       );
+
+      if (generation != _fetchGeneration) return;
 
       if (_apiService.errorMessage.isNotEmpty) {
         if (cachedThreats.isNotEmpty) {
@@ -85,12 +97,17 @@ class ThreatFeedController extends GetxController {
         return;
       }
 
-      threats.assignAll(_newestFirst(results));
+      _allThreats
+        ..clear()
+        ..addAll(_newestFirst(results));
+      _applyFiltersToLoadedThreats();
       currentPage.value = 0;
       hasMorePages.value = _apiService.hasMoreThreatPages;
       isShowingCachedData.value = false;
     } catch (_) {
-      final cachedThreats = _cachedThreatsForCurrentFilters();
+      final cachedThreats = _cachedThreatsForCurrentState(
+        useRemoteSeverity: shouldUseRemoteSeverity,
+      );
       if (cachedThreats.isNotEmpty) {
         _showCachedThreats(cachedThreats);
       } else {
@@ -99,7 +116,9 @@ class ThreatFeedController extends GetxController {
         isShowingCachedData.value = false;
       }
     } finally {
-      isLoading.value = false;
+      if (generation == _fetchGeneration) {
+        isLoading.value = false;
+      }
     }
   }
 
@@ -121,8 +140,8 @@ class ThreatFeedController extends GetxController {
       final nextPage = currentPage.value + 1;
       final results = await _apiService.fetchThreats(
         page: nextPage,
-        keyword: searchKeyword.value,
-        severity: selectedSeverity.value,
+        severity:
+            selectedSeverity.value.isEmpty ? null : selectedSeverity.value,
       );
 
       if (_apiService.errorMessage.isNotEmpty) {
@@ -130,8 +149,10 @@ class ThreatFeedController extends GetxController {
         return;
       }
 
-      threats.addAll(results);
-      threats.assignAll(_newestFirst(threats));
+      _allThreats
+        ..addAll(results)
+        ..replaceRange(0, _allThreats.length, _dedupeNewestFirst(_allThreats));
+      _applyFiltersToLoadedThreats();
       currentPage.value = nextPage;
       hasMorePages.value = _apiService.hasMoreThreatPages;
     } catch (_) {
@@ -154,29 +175,38 @@ class ThreatFeedController extends GetxController {
   }
 
   void _showCachedThreats(List<ThreatAdvisory> cachedThreats) {
-    threats.assignAll(_newestFirst(cachedThreats));
+    _allThreats
+      ..clear()
+      ..addAll(_newestFirst(cachedThreats));
+    _applyFiltersToLoadedThreats();
     currentPage.value = 0;
     hasMorePages.value = false;
     errorMessage.value = '';
     isShowingCachedData.value = true;
   }
 
-  List<ThreatAdvisory> _cachedThreatsForCurrentFilters() {
-    final cacheKey = _apiService.buildThreatCacheKey(
-      page: 0,
-      keyword: searchKeyword.value,
-      severity: selectedSeverity.value,
-    );
-    final filteredCache = _apiService.getCachedThreats(cacheKey);
-    if (filteredCache.isNotEmpty) return filteredCache;
+  List<ThreatAdvisory> _cachedThreatsForCurrentState({
+    required bool useRemoteSeverity,
+  }) {
+    if (useRemoteSeverity && selectedSeverity.value.isNotEmpty) {
+      final severityCacheKey = _apiService.buildThreatCacheKey(
+        page: 0,
+        severity: selectedSeverity.value,
+      );
+      final severityCache = _apiService.getCachedThreats(severityCacheKey);
+      if (severityCache.isNotEmpty) return severityCache;
+    }
 
     final baseCacheKey = _apiService.buildThreatCacheKey(page: 0);
-    final baseCache = _apiService.getCachedThreats(baseCacheKey);
-    return _applyLocalFilters(baseCache);
+    return _apiService.getCachedThreats(baseCacheKey);
   }
 
-  List<ThreatAdvisory> _applyLocalFilters(List<ThreatAdvisory> cachedThreats) {
-    Iterable<ThreatAdvisory> results = cachedThreats;
+  void _applyFiltersToLoadedThreats() {
+    threats.assignAll(_filteredThreats(_allThreats));
+  }
+
+  List<ThreatAdvisory> _filteredThreats(List<ThreatAdvisory> source) {
+    Iterable<ThreatAdvisory> results = source;
 
     final severity = selectedSeverity.value.trim().toUpperCase();
     if (severity.isNotEmpty) {
@@ -194,31 +224,44 @@ class ThreatFeedController extends GetxController {
       });
     }
 
-    return results.toList();
+    return _newestFirst(results);
   }
 
   // -- Filtering and search --
   Future<void> filterBySeverity(String severity) async {
     errorMessage.value = '';
     selectedSeverity.value = severity.toUpperCase() == 'ALL' ? '' : severity;
-    await fetchThreats(refresh: true);
+    _applyFiltersToLoadedThreats();
+    await fetchThreats(
+      refresh: true,
+      useRemoteSeverity: selectedSeverity.value.isNotEmpty,
+    );
   }
 
   Future<void> search(String keyword) async {
     errorMessage.value = '';
     searchKeyword.value = keyword.trim();
-    await fetchThreats(refresh: true);
+    _applyFiltersToLoadedThreats();
   }
 
   Future<void> clearFilters() async {
     errorMessage.value = '';
     selectedSeverity.value = '';
     searchKeyword.value = '';
+    _applyFiltersToLoadedThreats();
     await fetchThreats(refresh: true);
   }
 
   List<ThreatAdvisory> _newestFirst(Iterable<ThreatAdvisory> items) {
     return items.toList()
       ..sort((a, b) => b.publishedDate.compareTo(a.publishedDate));
+  }
+
+  List<ThreatAdvisory> _dedupeNewestFirst(Iterable<ThreatAdvisory> items) {
+    final byId = <String, ThreatAdvisory>{};
+    for (final item in _newestFirst(items)) {
+      byId.putIfAbsent(item.id, () => item);
+    }
+    return byId.values.toList();
   }
 }
