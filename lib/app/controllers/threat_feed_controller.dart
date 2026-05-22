@@ -7,7 +7,6 @@ import 'package:get/get.dart';
 
 import '../models/threat_advisory.dart';
 import '../services/api_service.dart';
-import '../utils/constants.dart';
 
 class ThreatFeedController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
@@ -46,7 +45,7 @@ class ThreatFeedController extends GetxController {
 
       threats.assignAll(_newestFirst(results));
       currentPage.value = 0;
-      hasMorePages.value = results.length == AppStrings.nvdResultsPerPage;
+      hasMorePages.value = _apiService.hasMoreThreatPages;
 
       if (_apiService.errorMessage.isNotEmpty) {
         errorMessage.value = _apiService.errorMessage;
@@ -85,7 +84,7 @@ class ThreatFeedController extends GetxController {
       threats.addAll(results);
       threats.assignAll(_newestFirst(threats));
       currentPage.value = nextPage;
-      hasMorePages.value = results.length == AppStrings.nvdResultsPerPage;
+      hasMorePages.value = _apiService.hasMoreThreatPages;
     } catch (_) {
       errorMessage.value = 'Could not load more threats. Please try again.';
     } finally {

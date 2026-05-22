@@ -28,6 +28,7 @@ class AppStrings {
   static const hibpBaseUrl = 'https://api.pwnedpasswords.com/range';
   static const nvdApiKey = '22c34afc-c129-4fa6-896f-a4676276fdb6';
   static const nvdResultsPerPage = 20;
+  static const nvdRecentWindowDays = 120;
 }
 
 class AppHiveBoxes {

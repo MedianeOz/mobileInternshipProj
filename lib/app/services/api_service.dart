@@ -18,6 +18,8 @@ class ApiService {
   late final Dio _dio;
 
   String errorMessage = '';
+  bool hasMoreThreatPages = false;
+  int lastThreatTotalResults = 0;
 
   ApiService() {
     _dio = Dio(
@@ -66,23 +68,48 @@ class ApiService {
     String? severity,
   }) async {
     errorMessage = '';
+    hasMoreThreatPages = false;
+    lastThreatTotalResults = 0;
 
-    final queryParameters = <String, dynamic>{
-      'resultsPerPage': AppStrings.nvdResultsPerPage,
-      'startIndex': page * AppStrings.nvdResultsPerPage,
+    final publishWindow = _recentPublishWindow();
+    final baseQueryParameters = <String, dynamic>{
+      'pubStartDate': _formatNvdDate(publishWindow.start),
+      'pubEndDate': _formatNvdDate(publishWindow.end),
     };
 
     final trimmedKeyword = keyword?.trim();
     if (trimmedKeyword != null && trimmedKeyword.isNotEmpty) {
-      queryParameters['keywordSearch'] = trimmedKeyword;
+      baseQueryParameters['keywordSearch'] = trimmedKeyword;
     }
 
     final normalizedSeverity = severity?.trim().toUpperCase();
     if (normalizedSeverity != null && normalizedSeverity.isNotEmpty) {
-      queryParameters['cvssV3Severity'] = normalizedSeverity;
+      baseQueryParameters['cvssV3Severity'] = normalizedSeverity;
     }
 
     try {
+      final totalResults = await _fetchThreatCount(baseQueryParameters);
+      lastThreatTotalResults = totalResults;
+
+      if (totalResults == 0) {
+        return <ThreatAdvisory>[];
+      }
+
+      final pageBounds = _newestPageBounds(
+        page: page,
+        totalResults: totalResults,
+      );
+
+      if (pageBounds.count <= 0) {
+        return <ThreatAdvisory>[];
+      }
+
+      final queryParameters = <String, dynamic>{
+        ...baseQueryParameters,
+        'resultsPerPage': pageBounds.count,
+        'startIndex': pageBounds.startIndex,
+      };
+
       final response = await _dio.get<Map<String, dynamic>>(
         AppStrings.nvdBaseUrl,
         queryParameters: queryParameters,
@@ -102,10 +129,14 @@ class ApiService {
           .map(ThreatAdvisory.fromJson)
           .toList();
 
+      hasMoreThreatPages = pageBounds.startIndex > 0;
+
       await _cacheThreats(
         page: page,
         keyword: trimmedKeyword ?? '',
         severity: normalizedSeverity ?? '',
+        publishStartDate: baseQueryParameters['pubStartDate'].toString(),
+        publishEndDate: baseQueryParameters['pubEndDate'].toString(),
         threats: threats,
       );
 
@@ -197,11 +228,19 @@ class ApiService {
     required int page,
     required String keyword,
     required String severity,
+    required String publishStartDate,
+    required String publishEndDate,
     required List<ThreatAdvisory> threats,
   }) async {
     try {
       final box = await Hive.openBox<dynamic>(AppHiveBoxes.threatCache);
-      final key = _cacheKey(page: page, keyword: keyword, severity: severity);
+      final key = _cacheKey(
+        page: page,
+        keyword: keyword,
+        severity: severity,
+        publishStartDate: publishStartDate,
+        publishEndDate: publishEndDate,
+      );
       await box.put(
         key,
         threats.map((threat) => threat.toCacheJson()).toList(),
@@ -215,7 +254,79 @@ class ApiService {
     required int page,
     required String keyword,
     required String severity,
+    required String publishStartDate,
+    required String publishEndDate,
   }) {
-    return 'page=$page|keyword=$keyword|severity=$severity';
+    return 'page=$page|keyword=$keyword|severity=$severity|'
+        'pubStart=$publishStartDate|pubEnd=$publishEndDate';
   }
+
+  Future<int> _fetchThreatCount(Map<String, dynamic> queryParameters) async {
+    final response = await _dio.get<Map<String, dynamic>>(
+      AppStrings.nvdBaseUrl,
+      queryParameters: {
+        ...queryParameters,
+        'resultsPerPage': 1,
+        'startIndex': 0,
+      },
+      options: Options(
+        headers: {
+          'apiKey': AppStrings.nvdApiKey,
+        },
+      ),
+    );
+
+    final rawTotal = response.data?['totalResults'];
+    if (rawTotal is int) {
+      return rawTotal;
+    }
+    return int.tryParse(rawTotal.toString()) ?? 0;
+  }
+
+  _ThreatPageBounds _newestPageBounds({
+    required int page,
+    required int totalResults,
+  }) {
+    final safePage = page < 0 ? 0 : page;
+    final pageSize = AppStrings.nvdResultsPerPage;
+    final endExclusive = totalResults - (safePage * pageSize);
+    if (endExclusive <= 0) {
+      return const _ThreatPageBounds(startIndex: 0, count: 0);
+    }
+
+    final startIndex = endExclusive > pageSize ? endExclusive - pageSize : 0;
+    return _ThreatPageBounds(
+      startIndex: startIndex,
+      count: endExclusive - startIndex,
+    );
+  }
+
+  ({DateTime start, DateTime end}) _recentPublishWindow() {
+    final end = DateTime.now().toUtc();
+    final start = end.subtract(
+      const Duration(days: AppStrings.nvdRecentWindowDays),
+    );
+    return (start: start, end: end);
+  }
+
+  String _formatNvdDate(DateTime date) {
+    final utc = date.toUtc();
+    final year = utc.year.toString().padLeft(4, '0');
+    final month = utc.month.toString().padLeft(2, '0');
+    final day = utc.day.toString().padLeft(2, '0');
+    final hour = utc.hour.toString().padLeft(2, '0');
+    final minute = utc.minute.toString().padLeft(2, '0');
+    final second = utc.second.toString().padLeft(2, '0');
+    return '$year-$month-${day}T$hour:$minute:$second.000+00:00';
+  }
+}
+
+class _ThreatPageBounds {
+  final int startIndex;
+  final int count;
+
+  const _ThreatPageBounds({
+    required this.startIndex,
+    required this.count,
+  });
 }
