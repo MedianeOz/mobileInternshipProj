@@ -37,20 +37,13 @@ class NotificationService {
   }
 
   Future<void> _requestPermission() async {
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      final settings = await _messaging.getNotificationSettings();
-      if (kDebugMode) {
-        debugPrint(
-          '[FCM] Android permission status: '
-          '${settings.authorizationStatus.name}',
-        );
-      }
-      return;
-    }
-
     final settings = await _messaging.requestPermission(
       alert: true,
+      announcement: false,
       badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
       sound: true,
     );
     if (kDebugMode) {
@@ -129,9 +122,11 @@ class NotificationService {
 
   Future<void> _saveAndRefresh(AppNotification notification) async {
     await _storageService.saveNotification(notification.toJson());
-    if (Get.isRegistered<NotificationController>()) {
-      Get.find<NotificationController>().addNotificationInMemory(notification);
-    }
+    if (!Get.isRegistered<NotificationController>()) return;
+
+    final controller = Get.find<NotificationController>();
+    controller.addNotificationInMemory(notification);
+    controller.refreshFromStorage();
   }
 
   Future<void> _handleOpenedMessage(RemoteMessage message) async {
@@ -203,6 +198,15 @@ class NotificationService {
       'cve',
       'id',
     ]);
+    final baseScoreRaw = _firstDataValue(data, const [
+      'baseScore',
+      'base_score',
+      'cvssScore',
+      'cvss_score',
+      'score',
+    ]);
+    final baseScore =
+        baseScoreRaw != null ? double.tryParse(baseScoreRaw) : null;
 
     return AppNotification(
       id: message.messageId ??
@@ -217,6 +221,7 @@ class NotificationService {
         'priority',
       ]),
       cveId: cveId,
+      baseScore: baseScore,
       timestamp: DateTime.now(),
       isRead: false,
     );
@@ -238,32 +243,58 @@ class NotificationService {
     final body = message.notification?.body ?? data['body']?.toString() ?? '';
     final severityColor = _snackbarSeverityColor(data['severity']?.toString());
 
-    Get.snackbar(
-      title,
-      body,
-      backgroundColor: AppColors.surface,
-      colorText: AppColors.white,
-      borderColor: severityColor,
-      borderWidth: 1,
-      borderRadius: 12,
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 5),
-      snackPosition: SnackPosition.TOP,
-      icon: Icon(
-        Icons.notifications_active_outlined,
-        color: severityColor,
-        size: 22,
-      ),
-      shouldIconPulse: false,
-      mainButton: TextButton(
-        onPressed: () {
-          Get.back();
+    Get.showSnackbar(
+      GetSnackBar(
+        title: title,
+        message: body,
+        backgroundColor: AppColors.surface,
+        borderColor: severityColor,
+        borderWidth: 1,
+        borderRadius: 12,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 8),
+        snackPosition: SnackPosition.TOP,
+        icon: Icon(
+          Icons.notifications_active_outlined,
+          color: severityColor,
+          size: 22,
+        ),
+        shouldIconPulse: false,
+        titleText: Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        messageText: Text(
+          body,
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        mainButton: TextButton(
+          onPressed: () {
+            Get.closeCurrentSnackbar();
+            unawaited(_handleOpenedMessage(message));
+          },
+          child: Text(
+            'View',
+            style: TextStyle(
+              color: severityColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        onTap: (_) {
+          Get.closeCurrentSnackbar();
           unawaited(_handleOpenedMessage(message));
         },
-        child: Text(
-          'View',
-          style: TextStyle(color: severityColor),
-        ),
       ),
     );
   }

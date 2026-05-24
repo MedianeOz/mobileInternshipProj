@@ -8,6 +8,7 @@ class AppNotification {
   final String body;
   final String? severity;
   final String? cveId;
+  final double? baseScore;
   final DateTime timestamp;
   final bool isRead;
 
@@ -17,6 +18,7 @@ class AppNotification {
     required this.body,
     this.severity,
     this.cveId,
+    this.baseScore,
     required this.timestamp,
     this.isRead = false,
   });
@@ -56,6 +58,16 @@ class AppNotification {
         'priority',
       ]),
       cveId: cveId,
+      baseScore: () {
+        final raw = _firstJsonValue(json, const [
+          'baseScore',
+          'base_score',
+          'cvssScore',
+          'cvss_score',
+          'score',
+        ]);
+        return raw != null ? double.tryParse(raw) : null;
+      }(),
       timestamp: DateTime.tryParse(json['timestamp']?.toString() ?? '') ??
           DateTime.now(),
       isRead: json['isRead'] as bool? ?? false,
@@ -69,18 +81,20 @@ class AppNotification {
       'body': body,
       'severity': severity,
       'cveId': cveId,
+      'baseScore': baseScore,
       'timestamp': timestamp.toIso8601String(),
       'isRead': isRead,
     };
   }
 
-  AppNotification copyWith({bool? isRead}) {
+  AppNotification copyWith({bool? isRead, double? baseScore}) {
     return AppNotification(
       id: id,
       title: title,
       body: body,
       severity: severity,
       cveId: cveId,
+      baseScore: baseScore ?? this.baseScore,
       timestamp: timestamp,
       isRead: isRead ?? this.isRead,
     );

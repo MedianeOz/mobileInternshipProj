@@ -242,6 +242,9 @@ class ThreatFeedController extends GetxController {
     errorMessage.value = '';
     searchKeyword.value = keyword.trim();
     _applyFiltersToLoadedThreats();
+    if (_allThreats.isEmpty && keyword.trim().isNotEmpty) {
+      await fetchThreats(refresh: true);
+    }
   }
 
   Future<void> clearFilters() async {

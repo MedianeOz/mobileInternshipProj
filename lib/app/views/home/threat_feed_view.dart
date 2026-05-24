@@ -56,8 +56,13 @@ class _ThreatFeedViewState extends State<ThreatFeedView> {
 
   void _handleSearchChanged(String value) {
     _searchDebounce?.cancel();
+    if (value.trim().isEmpty) {
+      unawaited(threatController.search(''));
+      return;
+    }
+
     _searchDebounce = Timer(const Duration(milliseconds: 500), () {
-      threatController.search(value);
+      unawaited(threatController.search(value));
     });
   }
 
@@ -94,14 +99,11 @@ class _ThreatFeedViewState extends State<ThreatFeedView> {
                 ),
               ),
               const SizedBox(height: 22),
-              Obx(
-                () => _SearchBar(
-                  controller: searchController,
-                  enabled: !controller.isLoading.value &&
-                      !controller.isLoadingMore.value,
-                  onChanged: _handleSearchChanged,
-                  onSubmitted: controller.search,
-                ),
+              _SearchBar(
+                controller: searchController,
+                enabled: true,
+                onChanged: _handleSearchChanged,
+                onSubmitted: controller.search,
               ),
               const SizedBox(height: 14),
               Obx(() {

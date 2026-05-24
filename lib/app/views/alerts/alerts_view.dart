@@ -94,7 +94,13 @@ class _AlertsViewState extends State<AlertsView> with WidgetsBindingObserver {
                     return const _EmptyAlertsState();
                   }
 
-                  final notifications = controller.filteredNotifications;
+                  final notifications = controller.filteredNotifications
+                      .where(_hasVisibleNotificationContent)
+                      .toList();
+                  if (notifications.isEmpty) {
+                    return const _EmptyAlertsState();
+                  }
+
                   return RefreshIndicator(
                     color: AppColors.primary,
                     backgroundColor: AppColors.surface,
@@ -110,6 +116,7 @@ class _AlertsViewState extends State<AlertsView> with WidgetsBindingObserver {
                       itemBuilder: (context, index) {
                         final notification = notifications[index];
                         return _NotificationTile(
+                          key: ValueKey(notification.id),
                           notification: notification,
                           controller: controller,
                         );
@@ -262,6 +269,7 @@ class _NotificationTile extends StatelessWidget {
   final NotificationController controller;
 
   const _NotificationTile({
+    super.key,
     required this.notification,
     required this.controller,
   });
@@ -269,10 +277,15 @@ class _NotificationTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final severityColor = _severityColor(notification.severity);
-    final severityLabel = _severityLabel(notification.severity);
-    final cveId = notification.cveId;
+    final severityLabel = _severityLabel(notification.severity) ?? 'ALERT';
+    final cveId = _cleanText(notification.cveId);
     final hasCve = cveId != null && cveId.isNotEmpty;
     final isUnread = !notification.isRead;
+    final title = _displayText(notification.title, 'CyberShield Alert');
+    final body = _displayText(
+      notification.body,
+      'Open this alert to review the available security details.',
+    );
 
     return GestureDetector(
       onTap: () => controller.openNotification(notification),
@@ -280,13 +293,24 @@ class _NotificationTile extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: isUnread
+              ? severityColor.withValues(alpha: 0.07)
+              : AppColors.surface,
           border: isUnread
               ? Border(
                   left: BorderSide(color: severityColor, width: 3),
-                  top: const BorderSide(color: AppColors.border, width: 1),
-                  right: const BorderSide(color: AppColors.border, width: 1),
-                  bottom: const BorderSide(color: AppColors.border, width: 1),
+                  top: BorderSide(
+                    color: severityColor.withValues(alpha: 0.65),
+                    width: 1,
+                  ),
+                  right: BorderSide(
+                    color: severityColor.withValues(alpha: 0.65),
+                    width: 1,
+                  ),
+                  bottom: BorderSide(
+                    color: severityColor.withValues(alpha: 0.65),
+                    width: 1,
+                  ),
                 )
               : Border.all(color: AppColors.border, width: 1),
           borderRadius: BorderRadius.circular(12),
@@ -299,12 +323,10 @@ class _NotificationTile extends StatelessWidget {
                 Expanded(
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: severityLabel == null
-                        ? const SizedBox.shrink()
-                        : _SeverityChip(
-                            label: severityLabel,
-                            color: severityColor,
-                          ),
+                    child: _SeverityChip(
+                      label: severityLabel,
+                      color: severityColor,
+                    ),
                   ),
                 ),
                 Text(
@@ -329,7 +351,7 @@ class _NotificationTile extends StatelessWidget {
             ],
             const SizedBox(height: 6),
             Text(
-              notification.title,
+              title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -340,7 +362,7 @@ class _NotificationTile extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              notification.body,
+              body,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
@@ -414,9 +436,9 @@ Color _severityColor(String? severity) {
     case 'MEDIUM':
       return AppColors.primary;
     case 'LOW':
-      return AppColors.textMuted;
+      return AppColors.primaryDark;
     default:
-      return AppColors.border;
+      return AppColors.primary;
   }
 }
 
@@ -424,6 +446,26 @@ String? _severityLabel(String? severity) {
   const supported = {'CRITICAL', 'HIGH', 'MEDIUM', 'LOW'};
   final value = severity?.toUpperCase();
   return supported.contains(value) ? value : null;
+}
+
+String? _cleanText(String? value) {
+  final trimmed = value?.trim();
+  if (trimmed == null || trimmed.isEmpty) return null;
+  return trimmed;
+}
+
+String _displayText(String? value, String fallback) {
+  return _cleanText(value) ?? fallback;
+}
+
+bool _hasVisibleNotificationContent(AppNotification notification) {
+  final title = _cleanText(notification.title);
+  final hasOnlyDefaultTitle = title == null || title == 'CyberShield Alert';
+  return !hasOnlyDefaultTitle ||
+      _cleanText(notification.body) != null ||
+      _cleanText(notification.severity) != null ||
+      _cleanText(notification.cveId) != null ||
+      notification.baseScore != null;
 }
 
 String _timeAgo(DateTime timestamp) {

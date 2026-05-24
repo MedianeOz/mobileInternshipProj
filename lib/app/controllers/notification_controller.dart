@@ -5,7 +5,6 @@
 
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
 import '../models/app_notification.dart';
@@ -47,9 +46,6 @@ class NotificationController extends GetxController {
 
     notifications.insert(0, notification);
     _updateUnreadCount();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      refreshFromStorage();
-    });
   }
 
   void openNotification(AppNotification notification) {
@@ -63,7 +59,8 @@ class NotificationController extends GetxController {
       description: notification.body.isNotEmpty
           ? notification.body
           : 'No description available for this advisory.',
-      baseScore: _scoreFromSeverity(notification.severity),
+      baseScore:
+          notification.baseScore ?? _scoreFromSeverity(notification.severity),
       severity: _normalizeSeverity(notification.severity),
       publishedDate: notification.timestamp,
       lastModifiedDate: notification.timestamp,
