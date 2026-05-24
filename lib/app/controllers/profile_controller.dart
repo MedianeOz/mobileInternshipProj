@@ -6,6 +6,7 @@ import 'package:get/get.dart';
 
 import '../models/user_profile.dart';
 import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import 'auth_controller.dart';
 
@@ -13,6 +14,8 @@ class ProfileController extends GetxController {
   final AuthController authController = Get.find<AuthController>();
   final AuthService authService = Get.find<AuthService>();
   final StorageService _storageService = Get.find<StorageService>();
+  final NotificationService _notificationService =
+      Get.find<NotificationService>();
 
   Rx<UserProfile> userProfile = const UserProfile(
     uid: '',
@@ -31,6 +34,8 @@ class ProfileController extends GetxController {
     super.onInit();
     _populateFromCurrentUser();
     _loadPersistedProfile();
+    unawaited(
+        _notificationService.subscribeToWatchlistTopics(watchlist.toList()));
   }
 
   void addTechnology(String name) {
@@ -43,6 +48,7 @@ class ProfileController extends GetxController {
     watchlist.add(value);
     _syncProfile();
     _saveProfile();
+    unawaited(_notificationService.subscribeToWatchlistTopics([value]));
   }
 
   void removeTechnology(String name) {
@@ -51,6 +57,7 @@ class ProfileController extends GetxController {
     );
     _syncProfile();
     _saveProfile();
+    unawaited(_notificationService.unsubscribeFromWatchlistTopics([name]));
   }
 
   Future<void> syncNow() async {

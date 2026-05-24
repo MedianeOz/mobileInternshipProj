@@ -12,12 +12,14 @@ class StorageService {
   static const syncMetaBox = 'sync_meta';
   static const threatCacheBox = 'threat_cache';
   static const profileBox = 'user_profile';
+  static const notificationHistoryBox = 'notification_history';
 
   Box<dynamic>? _articlesBox;
   Box<dynamic>? _bookmarksBox;
   Box<dynamic>? _syncMetaBox;
   Box<dynamic>? _threatCacheBox;
   Box<dynamic>? _profileBox;
+  Box<dynamic>? _notificationHistoryBox;
 
   Future<void> init() async {
     _articlesBox ??= await Hive.openBox<dynamic>(knowledgeArticlesBox);
@@ -25,6 +27,8 @@ class StorageService {
     _syncMetaBox ??= await Hive.openBox<dynamic>(syncMetaBox);
     _threatCacheBox ??= await Hive.openBox<dynamic>(threatCacheBox);
     _profileBox ??= await Hive.openBox<dynamic>(profileBox);
+    _notificationHistoryBox ??=
+        await Hive.openBox<dynamic>(notificationHistoryBox);
   }
 
   Future<void> saveArticles(List<KnowledgeArticle> articles) async {
@@ -103,6 +107,62 @@ class StorageService {
     final raw = _profileBox?.get('profile');
     if (raw is! Map) return null;
     return Map<String, dynamic>.from(raw);
+  }
+
+  Future<void> saveNotification(Map<String, dynamic> notificationJson) async {
+    await init();
+    final key = notificationJson['id']?.toString() ??
+        DateTime.now().millisecondsSinceEpoch.toString();
+    await _notificationHistoryBox!.put(key, notificationJson);
+  }
+
+  List<Map<String, dynamic>> getNotificationHistory() {
+    final values =
+        _notificationHistoryBox?.values ?? const Iterable<dynamic>.empty();
+    return values
+        .whereType<Map>()
+        .map((item) => Map<String, dynamic>.from(item))
+        .toList()
+      ..sort((a, b) {
+        final aTime = a['timestamp']?.toString() ?? '';
+        final bTime = b['timestamp']?.toString() ?? '';
+        return bTime.compareTo(aTime);
+      });
+  }
+
+  Future<void> markNotificationRead(String id) async {
+    await init();
+    final raw = _notificationHistoryBox?.get(id);
+    if (raw is! Map) return;
+    final updated = Map<String, dynamic>.from(raw);
+    updated['isRead'] = true;
+    await _notificationHistoryBox!.put(id, updated);
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await init();
+    final keys = _notificationHistoryBox?.keys.toList() ?? [];
+    for (final key in keys) {
+      final raw = _notificationHistoryBox?.get(key);
+      if (raw is! Map) continue;
+      final updated = Map<String, dynamic>.from(raw);
+      updated['isRead'] = true;
+      await _notificationHistoryBox!.put(key, updated);
+    }
+  }
+
+  Future<void> clearNotificationHistory() async {
+    await init();
+    await _notificationHistoryBox!.clear();
+  }
+
+  int getUnreadNotificationCount() {
+    final values =
+        _notificationHistoryBox?.values ?? const Iterable<dynamic>.empty();
+    return values
+        .whereType<Map>()
+        .where((item) => item['isRead'] != true)
+        .length;
   }
 
   List<KnowledgeArticle> getStaticArticles() {

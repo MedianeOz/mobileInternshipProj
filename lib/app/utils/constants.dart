@@ -36,4 +36,5 @@ class AppHiveBoxes {
 
   static const threatCache = 'threat_cache';
   static const profileCache = 'user_profile';
+  static const notificationHistory = 'notification_history';
 }

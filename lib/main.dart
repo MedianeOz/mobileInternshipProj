@@ -1,11 +1,22 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import 'app/routes/app_pages.dart';
 import 'app/routes/app_routes.dart';
+import 'app/services/notification_service.dart';
 import 'app/services/storage_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'firebase_options.dart';
+
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  if (kDebugMode) {
+    debugPrint('[FCM] Background message received: ${message.messageId}');
+  }
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +27,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  final notificationService = NotificationService();
+  Get.put<NotificationService>(notificationService);
+  await notificationService.init();
   runApp(const CyberShieldApp());
 }
 

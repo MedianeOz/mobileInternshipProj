@@ -3,7 +3,10 @@
 // Persistent authenticated app shell with the five Deliverable 6 tabs.
 
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
+import '../../controllers/notification_controller.dart';
+import '../../services/notification_service.dart';
 import '../../utils/constants.dart';
 import '../alerts/alerts_view.dart';
 import '../home/threat_feed_view.dart';
@@ -15,12 +18,11 @@ class MainShellView extends StatefulWidget {
   const MainShellView({super.key});
 
   @override
-  State<MainShellView> createState() => _MainShellViewState();
+  State<MainShellView> createState() => MainShellViewState();
 }
 
-class _MainShellViewState extends State<MainShellView> {
+class MainShellViewState extends State<MainShellView> {
   int currentIndex = 0;
-  final int unreadAlertCount = 0;
 
   final List<Widget> _tabs = const [
     ThreatFeedView(),
@@ -29,6 +31,33 @@ class _MainShellViewState extends State<MainShellView> {
     AlertsView(),
     ProfileView(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    Get.put<MainShellViewState>(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!Get.isRegistered<NotificationService>()) return;
+      if (Get.find<NotificationService>().consumePendingAlertsOpen()) {
+        switchToTab(3);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    if (Get.isRegistered<MainShellViewState>()) {
+      Get.delete<MainShellViewState>();
+    }
+    super.dispose();
+  }
+
+  void switchToTab(int index) {
+    setState(() => currentIndex = index);
+    if (index == 3 && Get.isRegistered<NotificationController>()) {
+      Get.find<NotificationController>().refreshFromStorage();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +76,7 @@ class _MainShellViewState extends State<MainShellView> {
         ),
         child: BottomNavigationBar(
           currentIndex: currentIndex,
-          onTap: (index) => setState(() => currentIndex = index),
+          onTap: switchToTab,
           type: BottomNavigationBarType.fixed,
           backgroundColor: AppColors.surface,
           selectedItemColor: AppColors.primary,
@@ -72,14 +101,24 @@ class _MainShellViewState extends State<MainShellView> {
               label: 'Library',
             ),
             BottomNavigationBarItem(
-              icon: _AlertsNavIcon(
-                unreadAlertCount: unreadAlertCount,
-                isActive: false,
-              ),
-              activeIcon: _AlertsNavIcon(
-                unreadAlertCount: unreadAlertCount,
-                isActive: true,
-              ),
+              icon: Obx(() {
+                final count = Get.isRegistered<NotificationController>()
+                    ? Get.find<NotificationController>().unreadCount.value
+                    : 0;
+                return _AlertsNavIcon(
+                  unreadAlertCount: count,
+                  isActive: false,
+                );
+              }),
+              activeIcon: Obx(() {
+                final count = Get.isRegistered<NotificationController>()
+                    ? Get.find<NotificationController>().unreadCount.value
+                    : 0;
+                return _AlertsNavIcon(
+                  unreadAlertCount: count,
+                  isActive: true,
+                );
+              }),
               label: 'Alerts',
             ),
             const BottomNavigationBarItem(
