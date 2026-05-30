@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../controllers/notification_controller.dart';
+import '../controllers/profile_controller.dart';
 import '../models/app_notification.dart';
 import '../routes/app_routes.dart';
 import '../services/storage_service.dart';
@@ -92,7 +93,10 @@ class NotificationService {
         debugPrint('[FCM] Foreground message received: ${message.messageId}');
       }
       _handleMessage(message);
-      _showForegroundSnackbar(message);
+      final notification = _messageToNotification(message);
+      if (_shouldDisplay(notification)) {
+        _showForegroundSnackbar(message);
+      }
     });
   }
 
@@ -117,7 +121,49 @@ class NotificationService {
 
   void _handleMessage(RemoteMessage message) {
     final notification = _messageToNotification(message);
+    if (!_shouldDisplay(notification)) return;
     unawaited(_saveAndRefresh(notification));
+  }
+
+  bool _shouldDisplay(AppNotification notification) {
+    if (!Get.isRegistered<ProfileController>()) return true;
+
+    final profile = Get.find<ProfileController>();
+    return shouldDisplayForPreferences(
+      notification,
+      allNotificationsEnabled: profile.allNotificationsEnabled.value,
+      criticalAlertsEnabled: profile.criticalAlertsEnabled.value,
+      quietHoursEnabled: profile.quietHoursEnabled.value,
+    );
+  }
+
+  @visibleForTesting
+  static bool shouldDisplayForPreferences(
+    AppNotification notification, {
+    required bool allNotificationsEnabled,
+    required bool criticalAlertsEnabled,
+    required bool quietHoursEnabled,
+    DateTime? now,
+  }) {
+    if (!allNotificationsEnabled) return false;
+
+    if (criticalAlertsEnabled && !_isCriticalAlert(notification)) {
+      return false;
+    }
+
+    if (quietHoursEnabled) {
+      final hour = (now ?? DateTime.now()).hour;
+      if (hour >= 22 || hour < 7) return false;
+    }
+
+    return true;
+  }
+
+  static bool _isCriticalAlert(AppNotification notification) {
+    final severity = (notification.severity ?? '').toUpperCase();
+    return severity == 'CRITICAL' ||
+        severity == 'HIGH' ||
+        (notification.baseScore ?? 0) >= 9.0;
   }
 
   Future<void> _saveAndRefresh(AppNotification notification) async {
@@ -131,6 +177,8 @@ class NotificationService {
 
   Future<void> _handleOpenedMessage(RemoteMessage message) async {
     final notification = _messageToNotification(message).copyWith(isRead: true);
+    if (!_shouldDisplay(notification)) return;
+
     await _saveAndRefresh(notification);
     await _storageService.markNotificationRead(notification.id);
 

@@ -10,11 +10,16 @@ import 'package:get/get.dart';
 
 import '../models/threat_advisory.dart';
 import '../services/api_service.dart';
+import 'profile_controller.dart';
 
 class ThreatFeedController extends GetxController {
-  final ApiService _apiService = Get.find<ApiService>();
+  final ApiService _apiService;
+  final bool _autoBootstrap;
+  final ProfileController? Function()? _profileControllerProvider;
   final List<ThreatAdvisory> _allThreats = <ThreatAdvisory>[];
   int _fetchGeneration = 0;
+  bool _lastRemoteHasMorePages = false;
+  ProfileController? _cachedProfileController;
 
   RxList<ThreatAdvisory> threats = <ThreatAdvisory>[].obs;
   RxBool isLoading = false.obs;
@@ -22,6 +27,7 @@ class ThreatFeedController extends GetxController {
   RxString errorMessage = ''.obs;
   RxString selectedSeverity = ''.obs;
   RxString searchKeyword = ''.obs;
+  RxBool isWatchlistModeActive = true.obs;
   RxInt currentPage = 0.obs;
   RxBool hasMorePages = true.obs;
   RxBool isOffline = false.obs;
@@ -29,10 +35,30 @@ class ThreatFeedController extends GetxController {
 
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
 
+  ThreatFeedController({
+    ApiService? apiService,
+    bool autoBootstrap = true,
+    ProfileController? Function()? profileControllerProvider,
+  })  : _apiService = apiService ?? Get.find<ApiService>(),
+        _autoBootstrap = autoBootstrap,
+        _profileControllerProvider = profileControllerProvider;
+
+  ProfileController? get _profileController {
+    final provided = _profileControllerProvider?.call();
+    if (provided != null) return provided;
+
+    _cachedProfileController ??= Get.isRegistered<ProfileController>()
+        ? Get.find<ProfileController>()
+        : null;
+    return _cachedProfileController;
+  }
+
   @override
   void onInit() {
     super.onInit();
-    unawaited(_bootstrap());
+    if (_autoBootstrap) {
+      unawaited(_bootstrap());
+    }
   }
 
   @override
@@ -79,9 +105,9 @@ class ThreatFeedController extends GetxController {
         return;
       }
 
-      final results = await _apiService.fetchThreats(
+      final results = await _fetchRemoteThreatPage(
         page: 0,
-        severity: shouldUseRemoteSeverity ? selectedSeverity.value : null,
+        useRemoteSeverity: shouldUseRemoteSeverity,
       );
 
       if (generation != _fetchGeneration) return;
@@ -102,7 +128,7 @@ class ThreatFeedController extends GetxController {
         ..addAll(_newestFirst(results));
       _applyFiltersToLoadedThreats();
       currentPage.value = 0;
-      hasMorePages.value = _apiService.hasMoreThreatPages;
+      hasMorePages.value = _lastRemoteHasMorePages;
       isShowingCachedData.value = false;
     } catch (_) {
       final cachedThreats = _cachedThreatsForCurrentState(
@@ -124,6 +150,7 @@ class ThreatFeedController extends GetxController {
 
   // -- Infinite scrolling --
   Future<void> loadMoreThreats() async {
+    final generation = _fetchGeneration;
     errorMessage.value = '';
 
     if (isLoading.value || isLoadingMore.value || !hasMorePages.value) {
@@ -138,11 +165,12 @@ class ThreatFeedController extends GetxController {
 
     try {
       final nextPage = currentPage.value + 1;
-      final results = await _apiService.fetchThreats(
+      final results = await _fetchRemoteThreatPage(
         page: nextPage,
-        severity:
-            selectedSeverity.value.isEmpty ? null : selectedSeverity.value,
+        useRemoteSeverity: selectedSeverity.value.isNotEmpty,
       );
+
+      if (generation != _fetchGeneration) return;
 
       if (_apiService.errorMessage.isNotEmpty) {
         errorMessage.value = _apiService.errorMessage;
@@ -154,9 +182,11 @@ class ThreatFeedController extends GetxController {
         ..replaceRange(0, _allThreats.length, _dedupeNewestFirst(_allThreats));
       _applyFiltersToLoadedThreats();
       currentPage.value = nextPage;
-      hasMorePages.value = _apiService.hasMoreThreatPages;
+      hasMorePages.value = _lastRemoteHasMorePages;
     } catch (_) {
-      errorMessage.value = 'Could not load more threats. Please try again.';
+      if (generation == _fetchGeneration) {
+        errorMessage.value = 'Could not load more threats. Please try again.';
+      }
     } finally {
       isLoadingMore.value = false;
     }
@@ -201,6 +231,53 @@ class ThreatFeedController extends GetxController {
     return _apiService.getCachedThreats(baseCacheKey);
   }
 
+  Future<List<ThreatAdvisory>> _fetchRemoteThreatPage({
+    required int page,
+    required bool useRemoteSeverity,
+  }) async {
+    final severity = useRemoteSeverity ? selectedSeverity.value : null;
+    final watchlistKeywords = _watchlistKeywords();
+
+    if (!isWatchlistModeActive.value || watchlistKeywords.isEmpty) {
+      final results = await _apiService.fetchThreats(
+        page: page,
+        severity: severity,
+      );
+      _lastRemoteHasMorePages = _apiService.hasMoreThreatPages;
+      return results;
+    }
+
+    final combined = <ThreatAdvisory>[];
+    var hasMore = false;
+    for (final keyword in watchlistKeywords) {
+      final results = await _apiService.fetchThreats(
+        page: page,
+        keyword: keyword,
+        severity: severity,
+      );
+      if (_apiService.errorMessage.isEmpty) {
+        combined.addAll(results);
+      }
+      hasMore = hasMore || _apiService.hasMoreThreatPages;
+    }
+
+    _lastRemoteHasMorePages = hasMore;
+    if (combined.isNotEmpty) {
+      _apiService.errorMessage = '';
+    }
+    return _dedupeNewestFirst(combined);
+  }
+
+  List<String> _watchlistKeywords() {
+    final watchlist = _profileController?.watchlist ?? <String>[];
+    return watchlist
+        .map((technology) => technology.trim())
+        .where((technology) => technology.isNotEmpty)
+        .toSet()
+        .take(6)
+        .toList();
+  }
+
   void _applyFiltersToLoadedThreats() {
     threats.assignAll(_filteredThreats(_allThreats));
   }
@@ -224,10 +301,32 @@ class ThreatFeedController extends GetxController {
       });
     }
 
+    if (isWatchlistModeActive.value) {
+      final watchlist = _watchlistKeywords();
+      if (watchlist.isNotEmpty) {
+        final lowerWatchlist = watchlist
+            .map((technology) => technology.trim().toLowerCase())
+            .where((technology) => technology.isNotEmpty)
+            .toList();
+        if (lowerWatchlist.isNotEmpty) {
+          results = results.where((threat) {
+            final haystack = '${threat.id} ${threat.description}'.toLowerCase();
+            return lowerWatchlist.any(haystack.contains);
+          });
+        }
+      }
+    }
+
     return _newestFirst(results);
   }
 
   // -- Filtering and search --
+  Future<void> toggleWatchlistMode() async {
+    isWatchlistModeActive.value = !isWatchlistModeActive.value;
+    _applyFiltersToLoadedThreats();
+    await fetchThreats(refresh: true);
+  }
+
   Future<void> filterBySeverity(String severity) async {
     errorMessage.value = '';
     selectedSeverity.value = severity.toUpperCase() == 'ALL' ? '' : severity;

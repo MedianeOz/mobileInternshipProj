@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../controllers/auth_controller.dart';
 import '../../routes/app_routes.dart';
+import '../../utils/constants.dart';
 import '../../utils/validators.dart';
 import '../../utils/password_analyzer.dart';
 
@@ -57,7 +58,7 @@ class _RegisterViewState extends State<RegisterView> {
     final AuthController controller = Get.find<AuthController>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0F14),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Stack(
           children: [
@@ -72,7 +73,7 @@ class _RegisterViewState extends State<RegisterView> {
                     child: Text(
                       'CYBERSHIELD',
                       style: TextStyle(
-                        color: Color(0xFF00E5A0),
+                        color: AppColors.primary,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 2.5,
@@ -86,7 +87,7 @@ class _RegisterViewState extends State<RegisterView> {
                     child: Text(
                       'Create account',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.white,
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
                       ),
@@ -105,21 +106,20 @@ class _RegisterViewState extends State<RegisterView> {
                           horizontal: 14, vertical: 12),
                       margin: const EdgeInsets.only(bottom: 20),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFF4444).withValues(alpha: 0.1),
+                        color: AppColors.danger.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(
-                            color: const Color(0xFFFF4444), width: 1),
+                        border: Border.all(color: AppColors.danger, width: 1),
                       ),
                       child: Text(
                         controller.errorMessage.value,
                         style: const TextStyle(
-                            color: Color(0xFFFF4444), fontSize: 13),
+                            color: AppColors.danger, fontSize: 13),
                       ),
                     );
                   }),
 
                   // ── Full Name ─────────────────────────────────────
-                  _AuthLabel(label: 'Full name'),
+                  const _AuthLabel(label: 'Full name'),
                   const SizedBox(height: 8),
                   _AuthTextField(
                     controller: nameController,
@@ -130,7 +130,7 @@ class _RegisterViewState extends State<RegisterView> {
                   const SizedBox(height: 20),
 
                   // ── Email ─────────────────────────────────────────
-                  _AuthLabel(label: 'Email'),
+                  const _AuthLabel(label: 'Email'),
                   const SizedBox(height: 8),
                   _AuthTextField(
                     controller: emailController,
@@ -141,7 +141,7 @@ class _RegisterViewState extends State<RegisterView> {
                   const SizedBox(height: 20),
 
                   // ── Password ──────────────────────────────────────
-                  _AuthLabel(label: 'Password'),
+                  const _AuthLabel(label: 'Password'),
                   const SizedBox(height: 8),
                   Obx(() => _AuthTextField(
                         controller: passwordController,
@@ -165,7 +165,7 @@ class _RegisterViewState extends State<RegisterView> {
                             obscurePassword.value
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
-                            color: const Color(0xFF8A8F9E),
+                            color: AppColors.textMuted,
                             size: 20,
                           ),
                         ),
@@ -212,7 +212,7 @@ class _RegisterViewState extends State<RegisterView> {
                   const SizedBox(height: 16),
 
                   // ── Confirm Password ──────────────────────────────
-                  _AuthLabel(label: 'Confirm password'),
+                  const _AuthLabel(label: 'Confirm password'),
                   const SizedBox(height: 8),
                   Obx(() => _AuthTextField(
                         controller: confirmController,
@@ -222,9 +222,8 @@ class _RegisterViewState extends State<RegisterView> {
                           confirmMatches.value =
                               val == passwordController.text && val.isNotEmpty;
                         },
-                        borderColor: confirmMatches.value
-                            ? const Color(0xFF00E5A0)
-                            : null,
+                        borderColor:
+                            confirmMatches.value ? AppColors.primary : null,
                         suffixIcon: GestureDetector(
                           onTap: () =>
                               obscureConfirm.value = !obscureConfirm.value,
@@ -232,7 +231,7 @@ class _RegisterViewState extends State<RegisterView> {
                             obscureConfirm.value
                                 ? Icons.visibility_outlined
                                 : Icons.visibility_off_outlined,
-                            color: const Color(0xFF8A8F9E),
+                            color: AppColors.textMuted,
                             size: 20,
                           ),
                         ),
@@ -253,22 +252,22 @@ class _RegisterViewState extends State<RegisterView> {
 
                           if (nameError != null) {
                             Get.snackbar('Invalid input', nameError,
-                                backgroundColor: const Color(0xFF1A1D26),
-                                colorText: Colors.white);
+                                backgroundColor: AppColors.surface,
+                                colorText: AppColors.white);
                             return;
                           }
                           if (emailError != null) {
                             Get.snackbar('Invalid input', emailError,
-                                backgroundColor: const Color(0xFF1A1D26),
-                                colorText: Colors.white);
+                                backgroundColor: AppColors.surface,
+                                colorText: AppColors.white);
                             return;
                           }
                           if (passwordController.text !=
                               confirmController.text) {
                             Get.snackbar(
                                 'Password mismatch', 'Passwords do not match.',
-                                backgroundColor: const Color(0xFF1A1D26),
-                                colorText: Colors.white);
+                                backgroundColor: AppColors.surface,
+                                colorText: AppColors.white);
                             return;
                           }
 
@@ -298,7 +297,7 @@ class _RegisterViewState extends State<RegisterView> {
                       const Text(
                         'Already have an account? ',
                         style:
-                            TextStyle(color: Color(0xFF8A8F9E), fontSize: 14),
+                            TextStyle(color: AppColors.textMuted, fontSize: 14),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -308,7 +307,7 @@ class _RegisterViewState extends State<RegisterView> {
                         child: const Text(
                           'Sign in',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.bold,
                           ),
@@ -341,7 +340,7 @@ class _AuthLabel extends StatelessWidget {
     return Text(
       label,
       style: const TextStyle(
-        color: Color(0xFF8A8F9E),
+        color: AppColors.textMuted,
         fontSize: 13,
         fontWeight: FontWeight.w500,
       ),
@@ -370,18 +369,18 @@ class _AuthTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color activeBorder = borderColor ?? const Color(0xFF2A2D3A);
+    final Color activeBorder = borderColor ?? AppColors.border;
     return TextField(
       controller: controller,
       obscureText: obscureText,
       keyboardType: keyboardType,
       onChanged: onChanged,
-      style: const TextStyle(color: Colors.white, fontSize: 15),
+      style: const TextStyle(color: AppColors.white, fontSize: 15),
       decoration: InputDecoration(
         hintText: hintText,
-        hintStyle: const TextStyle(color: Color(0xFF4A5568), fontSize: 15),
+        hintStyle: const TextStyle(color: AppColors.textHint, fontSize: 15),
         filled: true,
-        fillColor: const Color(0xFF1A1D26),
+        fillColor: AppColors.surface,
         suffixIcon: suffixIcon != null
             ? Padding(
                 padding: const EdgeInsets.only(right: 12),
@@ -401,8 +400,8 @@ class _AuthTextField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
-          borderSide: BorderSide(
-              color: borderColor ?? const Color(0xFF00E5A0), width: 1.5),
+          borderSide:
+              BorderSide(color: borderColor ?? AppColors.primary, width: 1.5),
         ),
       ),
     );
@@ -428,10 +427,9 @@ class _AuthPrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: isLoading ? null : onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00E5A0),
-          foregroundColor: const Color(0xFF0D0F14),
-          disabledBackgroundColor:
-              const Color(0xFF00E5A0).withValues(alpha: 0.5),
+          backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.background,
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
           elevation: 0,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
@@ -443,7 +441,7 @@ class _AuthPrimaryButton extends StatelessWidget {
                 height: 20,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFF0D0F14),
+                  color: AppColors.background,
                 ),
               )
             : Text(
@@ -479,12 +477,12 @@ class _AuthSecondaryButton extends StatelessWidget {
       child: OutlinedButton(
         onPressed: isLoading ? null : onPressed,
         style: OutlinedButton.styleFrom(
-          foregroundColor: Colors.white,
-          side: const BorderSide(color: Color(0xFF2A2D3A), width: 1.5),
+          foregroundColor: AppColors.white,
+          side: const BorderSide(color: AppColors.border, width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
-          backgroundColor: const Color(0xFF1A1D26),
+          backgroundColor: AppColors.surface,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -495,7 +493,7 @@ class _AuthSecondaryButton extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: AppColors.white,
                 ),
               ),
               const SizedBox(width: 10),
@@ -505,7 +503,7 @@ class _AuthSecondaryButton extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
-                color: Colors.white,
+                color: AppColors.white,
               ),
             ),
           ],

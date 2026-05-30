@@ -11,9 +11,11 @@ import '../services/api_service.dart';
 import '../utils/password_analyzer.dart';
 
 class PasswordController extends GetxController {
-  final ApiService _apiService = Get.find<ApiService>();
+  final ApiService _apiService;
+  final Future<List<ConnectivityResult>> Function() _checkConnectivity;
   static const _offlineBreachMessage =
       'No internet connection. Breach check requires network access. Your local strength analysis is still accurate.';
+  String _lastAnalyzedPassword = '';
 
   RxString password = ''.obs;
   Rx<PasswordStrengthResult> strengthResult = PasswordAnalyzer.evaluate('').obs;
@@ -23,7 +25,17 @@ class PasswordController extends GetxController {
   RxBool isChecking = false.obs;
   RxBool obscureText = true.obs;
 
+  PasswordController({
+    ApiService? apiService,
+    Future<List<ConnectivityResult>> Function()? checkConnectivity,
+  })  : _apiService = apiService ?? Get.find<ApiService>(),
+        _checkConnectivity =
+            checkConnectivity ?? (() => Connectivity().checkConnectivity());
+
   void analyzePassword(String value) {
+    if (value == _lastAnalyzedPassword) return;
+
+    _lastAnalyzedPassword = value;
     password.value = value;
     strengthResult.value = PasswordAnalyzer.evaluate(value);
     isBreachChecked.value = false;
@@ -43,10 +55,9 @@ class PasswordController extends GetxController {
     isBreachChecked.value = false;
 
     try {
-      final connectivityResult = await Connectivity().checkConnectivity();
+      final connectivityResult = await _checkConnectivity();
       if (connectivityResult.contains(ConnectivityResult.none)) {
         errorMessage.value = _offlineBreachMessage;
-        isChecking.value = false;
         return;
       }
 
@@ -60,7 +71,7 @@ class PasswordController extends GetxController {
       breachResult.value = checkResult;
       isBreachChecked.value = true;
     } catch (_) {
-      final connectivityResult = await Connectivity().checkConnectivity();
+      final connectivityResult = await _checkConnectivity();
       errorMessage.value = connectivityResult.contains(ConnectivityResult.none)
           ? _offlineBreachMessage
           : 'Could not connect to breach database. Please try again.';
@@ -70,6 +81,7 @@ class PasswordController extends GetxController {
   }
 
   void clearAll() {
+    _lastAnalyzedPassword = '';
     password.value = '';
     strengthResult.value = PasswordAnalyzer.evaluate('');
     isBreachChecked.value = false;

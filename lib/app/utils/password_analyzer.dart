@@ -136,6 +136,8 @@ class PasswordAnalyzer {
     if (hasSymbols) score++;
     if (!hasDictionaryWord) score++;
     if (entropyBits >= 72) score++;
+    if (length < 8 && score > 3) score = 3;
+    if (!hasUppercase && score > 5) score = 5;
 
     if (score <= 2) {
       return PasswordStrengthResult(

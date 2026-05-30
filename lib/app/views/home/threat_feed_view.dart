@@ -123,9 +123,13 @@ class _ThreatFeedViewState extends State<ThreatFeedView> {
               Obx(
                 () => _SeverityFilters(
                   selectedSeverity: controller.selectedSeverity.value,
+                  isWatchlistModeActive: controller.isWatchlistModeActive.value,
                   isDisabled: controller.isLoading.value ||
                       controller.isLoadingMore.value,
                   onSelected: controller.filterBySeverity,
+                  onWatchlistToggle: () {
+                    unawaited(controller.toggleWatchlistMode());
+                  },
                 ),
               ),
               const SizedBox(height: 14),
@@ -280,13 +284,17 @@ class _SearchBar extends StatelessWidget {
 
 class _SeverityFilters extends StatelessWidget {
   final String selectedSeverity;
+  final bool isWatchlistModeActive;
   final bool isDisabled;
   final ValueChanged<String> onSelected;
+  final VoidCallback onWatchlistToggle;
 
   const _SeverityFilters({
     required this.selectedSeverity,
+    required this.isWatchlistModeActive,
     required this.isDisabled,
     required this.onSelected,
+    required this.onWatchlistToggle,
   });
 
   @override
@@ -297,42 +305,81 @@ class _SeverityFilters extends StatelessWidget {
       height: 38,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: filters.length,
+        itemCount: filters.length + 1,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
+          if (index == filters.length) {
+            return _FilterChip(
+              label: 'WATCHLIST',
+              isSelected: isWatchlistModeActive,
+              isDisabled: isDisabled,
+              useOutlinedActiveStyle: true,
+              onTap: onWatchlistToggle,
+            );
+          }
+
           final filter = filters[index];
           final isSelected = selectedSeverity.isEmpty
               ? filter == 'ALL'
               : filter == selectedSeverity;
 
-          return GestureDetector(
-            onTap: isDisabled ? null : () => onSelected(filter),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surface,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.border,
-                ),
-              ),
-              child: Text(
-                filter,
-                style: TextStyle(
-                  color: isSelected
-                      ? AppColors.background
-                      : AppColors.textMuted.withValues(
-                          alpha: isDisabled ? 0.5 : 1,
-                        ),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+          return _FilterChip(
+            label: filter,
+            isSelected: isSelected,
+            isDisabled: isDisabled,
+            onTap: () => onSelected(filter),
           );
         },
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final bool isDisabled;
+  final bool useOutlinedActiveStyle;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.isSelected,
+    required this.isDisabled,
+    required this.onTap,
+    this.useOutlinedActiveStyle = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final activeFill =
+        useOutlinedActiveStyle ? AppColors.surface : AppColors.primary;
+    final activeText =
+        useOutlinedActiveStyle ? AppColors.primary : AppColors.background;
+
+    return GestureDetector(
+      onTap: isDisabled ? null : onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: isSelected ? activeFill : AppColors.surface,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : AppColors.border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected
+                ? activeText
+                : AppColors.textMuted.withValues(alpha: isDisabled ? 0.5 : 1),
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }

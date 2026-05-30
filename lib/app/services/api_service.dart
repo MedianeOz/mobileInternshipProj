@@ -285,8 +285,11 @@ class ApiService {
     required String publishStartDate,
     required String publishEndDate,
   }) {
-    return 'page=$page|keyword=$keyword|severity=$severity|'
-        'pubStart=$publishStartDate|pubEnd=$publishEndDate';
+    final severitySegment = severity.trim().isEmpty ? 'ALL' : severity.trim();
+    final keywordSegment = keyword.trim().isEmpty
+        ? ''
+        : '_k${keyword.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]+'), '_')}';
+    return 'threats_p${page}_s$severitySegment$keywordSegment';
   }
 
   Future<int> _fetchThreatCount(Map<String, dynamic> queryParameters) async {

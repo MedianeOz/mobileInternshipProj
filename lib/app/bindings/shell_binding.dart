@@ -30,15 +30,6 @@ class ShellBinding extends Bindings {
     if (!Get.isRegistered<StorageService>()) {
       Get.put(StorageService());
     }
-    if (!Get.isRegistered<ThreatFeedController>()) {
-      Get.put(ThreatFeedController());
-    }
-    if (!Get.isRegistered<PasswordController>()) {
-      Get.put(PasswordController());
-    }
-    if (!Get.isRegistered<KnowledgeController>()) {
-      Get.put(KnowledgeController());
-    }
     if (!Get.isRegistered<NotificationService>()) {
       Get.put(NotificationService());
     }
@@ -47,6 +38,15 @@ class ShellBinding extends Bindings {
     }
     if (!Get.isRegistered<ProfileController>()) {
       Get.put(ProfileController());
+    }
+    if (!Get.isRegistered<ThreatFeedController>()) {
+      Get.put(ThreatFeedController());
+    }
+    if (!Get.isRegistered<PasswordController>()) {
+      Get.put(PasswordController());
+    }
+    if (!Get.isRegistered<KnowledgeController>()) {
+      Get.put(KnowledgeController());
     }
   }
 }

@@ -20,8 +20,11 @@ class StorageService {
   Box<dynamic>? _threatCacheBox;
   Box<dynamic>? _profileBox;
   Box<dynamic>? _notificationHistoryBox;
+  bool _initialized = false;
 
   Future<void> init() async {
+    if (_initialized) return;
+
     _articlesBox ??= await Hive.openBox<dynamic>(knowledgeArticlesBox);
     _bookmarksBox ??= await Hive.openBox<dynamic>(bookmarksBox);
     _syncMetaBox ??= await Hive.openBox<dynamic>(syncMetaBox);
@@ -29,6 +32,7 @@ class StorageService {
     _profileBox ??= await Hive.openBox<dynamic>(profileBox);
     _notificationHistoryBox ??=
         await Hive.openBox<dynamic>(notificationHistoryBox);
+    _initialized = true;
   }
 
   Future<void> saveArticles(List<KnowledgeArticle> articles) async {

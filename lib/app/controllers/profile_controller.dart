@@ -141,7 +141,13 @@ class ProfileController extends GetxController {
     final persisted = _storageService.loadProfile();
     if (persisted == null) return;
 
-    final savedProfile = UserProfile.fromJson(persisted);
+    late final UserProfile savedProfile;
+    try {
+      savedProfile = UserProfile.fromJson(persisted);
+    } catch (_) {
+      return;
+    }
+
     final current = userProfile.value;
     criticalAlertsEnabled.value = savedProfile.criticalAlertsEnabled;
     quietHoursEnabled.value = savedProfile.quietHoursEnabled;

@@ -30,7 +30,10 @@ class ProfileView extends StatelessWidget {
               );
             }),
             const SizedBox(height: 24),
-            const _SectionLabel(label: 'My watchlist'),
+            const _SectionLabel(
+              label: 'My watchlist',
+              subtitle: 'Technologies below filter your threat feed',
+            ),
             const SizedBox(height: 10),
             Obx(() {
               final items = controller.watchlist.toList();
@@ -44,27 +47,33 @@ class ProfileView extends StatelessWidget {
             const _SectionLabel(label: 'Notifications'),
             const SizedBox(height: 10),
             Obx(
-              () => _NotificationCard(
-                title: 'Critical alerts',
-                subtitle: 'CVSS >= 9.0',
-                value: controller.criticalAlertsEnabled.value,
-                onChanged: controller.setCriticalAlerts,
-              ),
+              () {
+                final allEnabled = controller.allNotificationsEnabled.value;
+                return _NotificationCard(
+                  title: 'Critical alerts',
+                  subtitle: 'On: Critical & High only. Off: all alerts',
+                  value: controller.criticalAlertsEnabled.value,
+                  onChanged: allEnabled ? controller.setCriticalAlerts : null,
+                );
+              },
             ),
             const SizedBox(height: 10),
             Obx(
-              () => _NotificationCard(
-                title: 'Quiet hours',
-                subtitle: '10 PM - 7 AM',
-                value: controller.quietHoursEnabled.value,
-                onChanged: controller.setQuietHours,
-              ),
+              () {
+                final allEnabled = controller.allNotificationsEnabled.value;
+                return _NotificationCard(
+                  title: 'Quiet hours',
+                  subtitle: 'Suppress alerts 10 PM - 7 AM',
+                  value: controller.quietHoursEnabled.value,
+                  onChanged: allEnabled ? controller.setQuietHours : null,
+                );
+              },
             ),
             const SizedBox(height: 10),
             Obx(
               () => _NotificationCard(
                 title: 'All notifications',
-                subtitle: 'System and security updates',
+                subtitle: 'Master switch for all alerts',
                 value: controller.allNotificationsEnabled.value,
                 onChanged: controller.setAllNotifications,
               ),
@@ -409,18 +418,38 @@ class _ProfileHeader extends StatelessWidget {
 
 class _SectionLabel extends StatelessWidget {
   final String label;
+  final String? subtitle;
 
-  const _SectionLabel({required this.label});
+  const _SectionLabel({
+    required this.label,
+    this.subtitle,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        color: AppColors.textMuted,
-        fontSize: 13,
-        fontWeight: FontWeight.w500,
-      ),
+    final subtitle = this.subtitle;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textMuted,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -524,7 +553,7 @@ class _NotificationCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final bool value;
-  final ValueChanged<bool> onChanged;
+  final ValueChanged<bool>? onChanged;
 
   const _NotificationCard({
     required this.title,
@@ -535,50 +564,55 @@ class _NotificationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    color: AppColors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
+    final isEnabled = onChanged != null;
+
+    return Opacity(
+      opacity: isEnabled ? 1 : 0.4,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: AppColors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: AppColors.textMuted,
-                    fontSize: 12,
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      color: AppColors.textMuted,
+                      fontSize: 12,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            activeThumbColor: AppColors.primary,
-            trackColor: WidgetStateProperty.resolveWith((states) {
-              if (states.contains(WidgetState.selected)) {
-                return AppColors.primary.withValues(alpha: 0.35);
-              }
-              return AppColors.border;
-            }),
-            onChanged: onChanged,
-          ),
-        ],
+            Switch(
+              value: value,
+              activeThumbColor: AppColors.primary,
+              trackColor: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return AppColors.primary.withValues(alpha: 0.35);
+                }
+                return AppColors.border;
+              }),
+              onChanged: onChanged,
+            ),
+          ],
+        ),
       ),
     );
   }
