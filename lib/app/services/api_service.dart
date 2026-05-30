@@ -16,9 +16,8 @@ import '../utils/constants.dart';
 import 'storage_service.dart';
 
 class ApiService {
-  static const int _threatTailWindowSize = AppStrings.nvdResultsPerPage * 25;
-
   late final Dio _dio;
+  final Map<String, List<String>> _cpeNameCache = <String, List<String>>{};
 
   String errorMessage = '';
   bool hasMoreThreatPages = false;
@@ -28,7 +27,7 @@ class ApiService {
     _dio = Dio(
       BaseOptions(
         connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 18),
       ),
     );
 
@@ -68,6 +67,7 @@ class ApiService {
   Future<List<ThreatAdvisory>> fetchThreats({
     int page = 0,
     String? keyword,
+    String? cpeName,
     String? severity,
   }) async {
     errorMessage = '';
@@ -80,8 +80,11 @@ class ApiService {
       'pubEndDate': _formatNvdDate(publishWindow.end),
     };
 
+    final trimmedCpeName = cpeName?.trim();
     final trimmedKeyword = keyword?.trim();
-    if (trimmedKeyword != null && trimmedKeyword.isNotEmpty) {
+    if (trimmedCpeName != null && trimmedCpeName.isNotEmpty) {
+      baseQueryParameters['cpeName'] = trimmedCpeName;
+    } else if (trimmedKeyword != null && trimmedKeyword.isNotEmpty) {
       baseQueryParameters['keywordSearch'] = trimmedKeyword;
     }
 
@@ -140,6 +143,7 @@ class ApiService {
       await _cacheThreats(
         page: page,
         keyword: trimmedKeyword ?? '',
+        cpeName: trimmedCpeName ?? '',
         severity: normalizedSeverity ?? '',
         publishStartDate: baseQueryParameters['pubStartDate'].toString(),
         publishEndDate: baseQueryParameters['pubEndDate'].toString(),
@@ -149,8 +153,8 @@ class ApiService {
       return pageThreats;
     } on DioException catch (error) {
       if (error.response?.statusCode == 404 &&
-          trimmedKeyword != null &&
-          trimmedKeyword.isNotEmpty) {
+          ((trimmedKeyword != null && trimmedKeyword.isNotEmpty) ||
+              (trimmedCpeName != null && trimmedCpeName.isNotEmpty))) {
         return <ThreatAdvisory>[];
       }
 
@@ -170,19 +174,112 @@ class ApiService {
   String buildThreatCacheKey({
     required int page,
     String? keyword,
+    String? cpeName,
     String? severity,
   }) {
     final publishWindow = _recentPublishWindow();
     final trimmedKeyword = keyword?.trim() ?? '';
+    final trimmedCpeName = cpeName?.trim() ?? '';
     final normalizedSeverity = severity?.trim().toUpperCase() ?? '';
 
     return _cacheKey(
       page: page,
       keyword: trimmedKeyword,
+      cpeName: trimmedCpeName,
       severity: normalizedSeverity,
       publishStartDate: _formatNvdDate(publishWindow.start),
       publishEndDate: _formatNvdDate(publishWindow.end),
     );
+  }
+
+  Future<List<String>> resolveCpeNames(
+    String keyword, {
+    int limit = 1,
+  }) async {
+    final trimmedKeyword = keyword.trim();
+    if (trimmedKeyword.isEmpty || limit <= 0) return <String>[];
+    final cacheKey = trimmedKeyword.toLowerCase();
+    final cached = _cpeNameCache[cacheKey];
+    if (cached != null) return cached.take(limit).toList();
+
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        AppStrings.nvdCpeBaseUrl,
+        queryParameters: {
+          'keywordSearch': trimmedKeyword,
+          'resultsPerPage': 20,
+          'startIndex': 0,
+        },
+        options: Options(
+          headers: {
+            'apiKey': AppStrings.nvdApiKey,
+          },
+        ),
+      );
+
+      final products =
+          response.data?['products'] as List<dynamic>? ?? <dynamic>[];
+      final matches = rankedCpeNamesForKeyword(products, trimmedKeyword);
+      _cpeNameCache[cacheKey] = matches;
+      return matches.take(limit).toList();
+    } on DioException catch (_) {
+      return <String>[];
+    } catch (_) {
+      return <String>[];
+    }
+  }
+
+  @visibleForTesting
+  static List<String> rankedCpeNamesForKeyword(
+    List<dynamic> products,
+    String keyword,
+  ) {
+    final normalizedKeyword = _normalizeSearchText(keyword);
+    if (normalizedKeyword.isEmpty) return <String>[];
+
+    final scored = <_ScoredCpeName>[];
+    final seen = <String>{};
+
+    for (final product in products) {
+      if (product is! Map<String, dynamic>) continue;
+      final cpe = product['cpe'];
+      if (cpe is! Map<String, dynamic>) continue;
+      if (cpe['deprecated'] == true) continue;
+
+      final cpeName = cpe['cpeName']?.toString().trim() ?? '';
+      if (cpeName.isEmpty || !seen.add(cpeName)) continue;
+
+      final titles = cpe['titles'] as List<dynamic>? ?? <dynamic>[];
+      final titleText = titles
+          .map((title) {
+            if (title is! Map<String, dynamic>) return '';
+            return title['title']?.toString() ?? '';
+          })
+          .where((title) => title.trim().isNotEmpty)
+          .join(' ');
+
+      final normalizedTitle = _normalizeSearchText(titleText);
+      final normalizedCpe = _normalizeSearchText(cpeName);
+      var score = 0;
+
+      if (normalizedTitle == normalizedKeyword) score += 80;
+      if (normalizedTitle.contains(normalizedKeyword)) score += 45;
+      if (normalizedCpe.contains(normalizedKeyword)) score += 25;
+
+      if (score > 0) {
+        if (cpeName.startsWith('cpe:2.3:a:')) score += 8;
+        if (cpeName.startsWith('cpe:2.3:o:')) score += 6;
+        scored.add(_ScoredCpeName(cpeName: cpeName, score: score));
+      }
+    }
+
+    scored.sort((a, b) {
+      final scoreComparison = b.score.compareTo(a.score);
+      if (scoreComparison != 0) return scoreComparison;
+      return a.cpeName.length.compareTo(b.cpeName.length);
+    });
+
+    return scored.map((item) => item.cpeName).toList();
   }
 
   // -- HIBP password range check --
@@ -256,6 +353,7 @@ class ApiService {
   Future<void> _cacheThreats({
     required int page,
     required String keyword,
+    required String cpeName,
     required String severity,
     required String publishStartDate,
     required String publishEndDate,
@@ -265,6 +363,7 @@ class ApiService {
       final key = _cacheKey(
         page: page,
         keyword: keyword,
+        cpeName: cpeName,
         severity: severity,
         publishStartDate: publishStartDate,
         publishEndDate: publishEndDate,
@@ -281,15 +380,22 @@ class ApiService {
   String _cacheKey({
     required int page,
     required String keyword,
+    required String cpeName,
     required String severity,
     required String publishStartDate,
     required String publishEndDate,
   }) {
     final severitySegment = severity.trim().isEmpty ? 'ALL' : severity.trim();
-    final keywordSegment = keyword.trim().isEmpty
+    final cpeSegment = cpeName.trim().isEmpty
         ? ''
-        : '_k${keyword.trim().toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]+'), '_')}';
-    return 'threats_p${page}_s$severitySegment$keywordSegment';
+        : '_cpe${_safeCacheSegment(cpeName.trim())}';
+    final keywordSegment =
+        keyword.trim().isEmpty ? '' : '_k${_safeCacheSegment(keyword.trim())}';
+    return 'threats_p${page}_s$severitySegment$cpeSegment$keywordSegment';
+  }
+
+  String _safeCacheSegment(String value) {
+    return value.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]+'), '_');
   }
 
   Future<int> _fetchThreatCount(Map<String, dynamic> queryParameters) async {
@@ -329,9 +435,7 @@ class ApiService {
       );
     }
 
-    final startIndex = endExclusive > _threatTailWindowSize
-        ? endExclusive - _threatTailWindowSize
-        : 0;
+    final startIndex = endExclusive > pageSize ? endExclusive - pageSize : 0;
     return _ThreatPageBounds(
       startIndex: startIndex,
       count: endExclusive - startIndex,
@@ -357,6 +461,10 @@ class ApiService {
     final second = utc.second.toString().padLeft(2, '0');
     return '$year-$month-${day}T$hour:$minute:$second.000+00:00';
   }
+
+  static String _normalizeSearchText(String value) {
+    return value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
+  }
 }
 
 class _ThreatPageBounds {
@@ -368,5 +476,15 @@ class _ThreatPageBounds {
     required this.startIndex,
     required this.count,
     required this.hasMore,
+  });
+}
+
+class _ScoredCpeName {
+  final String cpeName;
+  final int score;
+
+  const _ScoredCpeName({
+    required this.cpeName,
+    required this.score,
   });
 }

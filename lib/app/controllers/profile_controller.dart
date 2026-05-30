@@ -36,6 +36,7 @@ class ProfileController extends GetxController {
     _loadPersistedProfile();
     unawaited(
         _notificationService.subscribeToWatchlistTopics(watchlist.toList()));
+    unawaited(_syncNotificationTopicPreferences());
   }
 
   void addTechnology(String name) {
@@ -68,6 +69,7 @@ class ProfileController extends GetxController {
     criticalAlertsEnabled.value = value;
     _syncProfile();
     _saveProfile();
+    unawaited(_syncNotificationTopicPreferences());
   }
 
   void setQuietHours(bool value) {
@@ -80,6 +82,7 @@ class ProfileController extends GetxController {
     allNotificationsEnabled.value = value;
     _syncProfile();
     _saveProfile();
+    unawaited(_syncNotificationTopicPreferences());
   }
 
   String get displayInitials {
@@ -118,10 +121,9 @@ class ProfileController extends GetxController {
         ? user!.displayName!.trim()
         : _nameFromEmail(email);
     final initialWatchlist = <String>[
-      'Flutter',
+      'Kitty',
       'Firebase',
-      'Android',
-      'NVD',
+      'OpenSSL',
     ];
 
     userProfile.value = UserProfile(
@@ -191,5 +193,12 @@ class ProfileController extends GetxController {
 
   void _saveProfile() {
     unawaited(_storageService.saveProfile(userProfile.value.toJson()));
+  }
+
+  Future<void> _syncNotificationTopicPreferences() {
+    return _notificationService.syncAlertTopicSubscriptions(
+      allNotificationsEnabled: allNotificationsEnabled.value,
+      criticalAlertsEnabled: criticalAlertsEnabled.value,
+    );
   }
 }

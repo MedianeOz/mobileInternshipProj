@@ -32,7 +32,8 @@ class ProfileView extends StatelessWidget {
             const SizedBox(height: 24),
             const _SectionLabel(
               label: 'My watchlist',
-              subtitle: 'Technologies below filter your threat feed',
+              subtitle:
+                  'Use specific products like OpenSSL or Apache Tomcat for better CVE matches',
             ),
             const SizedBox(height: 10),
             Obx(() {

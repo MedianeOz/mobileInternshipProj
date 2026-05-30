@@ -21,32 +21,50 @@ import '../views/shell/main_shell_view.dart';
 class NotificationService {
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final StorageService _storageService = Get.find<StorageService>();
+  static const Duration _messagingTimeout = Duration(seconds: 8);
+  final Map<String, bool> _desiredTopicSubscriptions = <String, bool>{};
   bool _shouldOpenAlertsWhenShellReady = false;
+  bool _isInitialized = false;
+  Future<void> _topicQueue = Future<void>.value();
 
   Future<void> init() async {
+    if (_isInitialized) return;
+    _isInitialized = true;
+
+    _listenForeground();
+    _listenBackground();
+    unawaited(_handleInitialMessage());
+    unawaited(_configureMessaging());
+  }
+
+  Future<void> _configureMessaging() async {
     await _requestPermission();
-    await _messaging.setForegroundNotificationPresentationOptions(
-      alert: true,
-      badge: true,
-      sound: true,
+    await _guardMessagingCall(
+      _messaging.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      ),
+      operation: 'set foreground presentation options',
     );
     await _logToken();
     await _subscribeToBaseTopics();
-    _listenForeground();
-    _listenBackground();
-    await _handleInitialMessage();
   }
 
   Future<void> _requestPermission() async {
-    final settings = await _messaging.requestPermission(
-      alert: true,
-      announcement: false,
-      badge: true,
-      carPlay: false,
-      criticalAlert: false,
-      provisional: false,
-      sound: true,
+    final settings = await _guardMessagingCall(
+      _messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      ),
+      operation: 'request permission',
     );
+    if (settings == null) return;
     if (kDebugMode) {
       debugPrint(
           '[FCM] Permission status: ${settings.authorizationStatus.name}');
@@ -54,7 +72,10 @@ class NotificationService {
   }
 
   Future<void> _logToken() async {
-    final token = await _messaging.getToken();
+    final token = await _guardMessagingCall(
+      _messaging.getToken(),
+      operation: 'get token',
+    );
     if (kDebugMode) {
       debugPrint('[FCM] Token: $token');
     }
@@ -66,25 +87,69 @@ class NotificationService {
   }
 
   Future<void> _subscribeToBaseTopics() async {
-    await _messaging.subscribeToTopic('cybershield_alerts');
+    await syncAlertTopicSubscriptions(
+      allNotificationsEnabled: true,
+      criticalAlertsEnabled: false,
+    );
+  }
+
+  Future<void> syncAlertTopicSubscriptions({
+    bool? allNotificationsEnabled,
+    bool? criticalAlertsEnabled,
+  }) async {
+    final profile = Get.isRegistered<ProfileController>()
+        ? Get.find<ProfileController>()
+        : null;
+    final allEnabled =
+        allNotificationsEnabled ?? profile?.allNotificationsEnabled.value;
+    final criticalOnly =
+        criticalAlertsEnabled ?? profile?.criticalAlertsEnabled.value;
+
+    if (allEnabled == false) {
+      await _unsubscribeFromTopic(AppStrings.fcmAllAlertsTopic);
+      await _unsubscribeFromTopic(AppStrings.fcmCriticalAlertsTopic);
+      return;
+    }
+
+    if (criticalOnly == true) {
+      await _unsubscribeFromTopic(AppStrings.fcmAllAlertsTopic);
+      await _subscribeToTopic(AppStrings.fcmCriticalAlertsTopic);
+      return;
+    }
+
+    await _subscribeToTopic(AppStrings.fcmAllAlertsTopic);
+    await _unsubscribeFromTopic(AppStrings.fcmCriticalAlertsTopic);
   }
 
   Future<void> subscribeToWatchlistTopics(List<String> watchlist) async {
-    for (final tech in watchlist) {
-      final topic = _topicFromTech(tech);
-      await _messaging.subscribeToTopic(topic);
+    final topics = watchlist
+        .map(_topicFromTech)
+        .where((topic) => topic.isNotEmpty)
+        .toSet();
+    for (final topic in topics) {
+      await _subscribeToTopic(topic);
     }
   }
 
   Future<void> unsubscribeFromWatchlistTopics(List<String> watchlist) async {
-    for (final tech in watchlist) {
-      final topic = _topicFromTech(tech);
-      await _messaging.unsubscribeFromTopic(topic);
+    final topics = watchlist
+        .map(_topicFromTech)
+        .where((topic) => topic.isNotEmpty)
+        .toSet();
+    for (final topic in topics) {
+      await _unsubscribeFromTopic(topic);
     }
   }
 
   String _topicFromTech(String tech) {
-    return 'tech_${tech.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}';
+    final normalized = tech
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+        .replaceAll(RegExp(r'_+'), '_')
+        .replaceAll(RegExp(r'^_|_$'), '');
+    if (normalized.isEmpty) return '';
+    return 'tech_$normalized';
   }
 
   void _listenForeground() {
@@ -355,6 +420,64 @@ class NotificationService {
         return AppColors.warning;
       default:
         return AppColors.primary;
+    }
+  }
+
+  Future<void> _subscribeToTopic(String topic) async {
+    await _setTopicSubscription(topic, shouldSubscribe: true);
+  }
+
+  Future<void> _unsubscribeFromTopic(String topic) async {
+    await _setTopicSubscription(topic, shouldSubscribe: false);
+  }
+
+  Future<void> _setTopicSubscription(
+    String topic, {
+    required bool shouldSubscribe,
+  }) {
+    final normalizedTopic = topic.trim();
+    if (normalizedTopic.isEmpty) return Future<void>.value();
+
+    if (_desiredTopicSubscriptions[normalizedTopic] == shouldSubscribe) {
+      return Future<void>.value();
+    }
+    _desiredTopicSubscriptions[normalizedTopic] = shouldSubscribe;
+
+    _topicQueue = _topicQueue.then(
+      (_) => _applyLatestTopicSubscription(normalizedTopic),
+    );
+    return _topicQueue;
+  }
+
+  Future<void> _applyLatestTopicSubscription(String topic) async {
+    final shouldSubscribe = _desiredTopicSubscriptions[topic];
+    if (shouldSubscribe == null) return;
+
+    if (shouldSubscribe) {
+      await _guardMessagingCall(
+        _messaging.subscribeToTopic(topic),
+        operation: 'subscribe to $topic',
+      );
+      return;
+    }
+
+    await _guardMessagingCall(
+      _messaging.unsubscribeFromTopic(topic),
+      operation: 'unsubscribe from $topic',
+    );
+  }
+
+  Future<T?> _guardMessagingCall<T>(
+    Future<T> future, {
+    required String operation,
+  }) async {
+    try {
+      return await future.timeout(_messagingTimeout);
+    } catch (error) {
+      if (kDebugMode) {
+        debugPrint('[FCM] Could not $operation: $error');
+      }
+      return null;
     }
   }
 }

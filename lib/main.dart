@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -20,18 +22,177 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Hive.initFlutter();
-  final storageService = StorageService();
-  await storageService.init();
-  Get.put<StorageService>(storageService);
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  final notificationService = NotificationService();
-  Get.put<NotificationService>(notificationService);
-  await notificationService.init();
-  runApp(const CyberShieldApp());
+  runApp(const CyberShieldBootstrapApp());
+}
+
+class CyberShieldBootstrapApp extends StatefulWidget {
+  const CyberShieldBootstrapApp({super.key});
+
+  @override
+  State<CyberShieldBootstrapApp> createState() =>
+      _CyberShieldBootstrapAppState();
+}
+
+class _CyberShieldBootstrapAppState extends State<CyberShieldBootstrapApp> {
+  late Future<void> _bootstrapFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _bootstrapFuture = _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    await Hive.initFlutter().timeout(const Duration(seconds: 10));
+
+    final storageService = StorageService();
+    await storageService.init().timeout(const Duration(seconds: 12));
+    if (!Get.isRegistered<StorageService>()) {
+      Get.put<StorageService>(storageService);
+    }
+
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(const Duration(seconds: 25));
+
+    if (!Get.isRegistered<NotificationService>()) {
+      Get.put<NotificationService>(NotificationService());
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<void>(
+      future: _bootstrapFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done &&
+            !snapshot.hasError) {
+          final notificationService = Get.find<NotificationService>();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            unawaited(notificationService.init());
+          });
+          return const CyberShieldApp();
+        }
+
+        if (snapshot.hasError) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: _BootstrapErrorView(
+              error: snapshot.error.toString(),
+              onRetry: () {
+                setState(() {
+                  _bootstrapFuture = _bootstrap();
+                });
+              },
+            ),
+          );
+        }
+
+        return const MaterialApp(
+          debugShowCheckedModeBanner: false,
+          home: _BootstrapLoadingView(),
+        );
+      },
+    );
+  }
+}
+
+class _BootstrapLoadingView extends StatelessWidget {
+  const _BootstrapLoadingView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: Color(0xFF0D0F14),
+      body: SafeArea(
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'CYBERSHIELD',
+                style: TextStyle(
+                  color: Color(0xFF00E5A0),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 2.5,
+                ),
+              ),
+              SizedBox(height: 18),
+              SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  color: Color(0xFF00E5A0),
+                  strokeWidth: 2,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BootstrapErrorView extends StatelessWidget {
+  final String error;
+  final VoidCallback onRetry;
+
+  const _BootstrapErrorView({
+    required this.error,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0F14),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Could not start CyberShield',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                error,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Color(0xFF8A8F9E),
+                  fontSize: 13,
+                  height: 1.4,
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: onRetry,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF00E5A0),
+                    foregroundColor: const Color(0xFF0D0F14),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class CyberShieldApp extends StatelessWidget {

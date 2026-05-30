@@ -329,6 +329,7 @@ class MockApiService extends _i1.Mock implements _i9.ApiService {
   _i11.Future<List<_i12.ThreatAdvisory>> fetchThreats({
     int? page = 0,
     String? keyword,
+    String? cpeName,
     String? severity,
   }) =>
       (super.noSuchMethod(
@@ -338,6 +339,7 @@ class MockApiService extends _i1.Mock implements _i9.ApiService {
           {
             #page: page,
             #keyword: keyword,
+            #cpeName: cpeName,
             #severity: severity,
           },
         ),
@@ -362,6 +364,7 @@ class MockApiService extends _i1.Mock implements _i9.ApiService {
   String buildThreatCacheKey({
     required int? page,
     String? keyword,
+    String? cpeName,
     String? severity,
   }) =>
       (super.noSuchMethod(
@@ -371,6 +374,7 @@ class MockApiService extends _i1.Mock implements _i9.ApiService {
           {
             #page: page,
             #keyword: keyword,
+            #cpeName: cpeName,
             #severity: severity,
           },
         ),
@@ -382,6 +386,7 @@ class MockApiService extends _i1.Mock implements _i9.ApiService {
             {
               #page: page,
               #keyword: keyword,
+              #cpeName: cpeName,
               #severity: severity,
             },
           ),
@@ -394,11 +399,27 @@ class MockApiService extends _i1.Mock implements _i9.ApiService {
             {
               #page: page,
               #keyword: keyword,
+              #cpeName: cpeName,
               #severity: severity,
             },
           ),
         ),
       ) as String);
+
+  @override
+  _i11.Future<List<String>> resolveCpeNames(
+    String? keyword, {
+    int? limit = 2,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #resolveCpeNames,
+          [keyword],
+          {#limit: limit},
+        ),
+        returnValue: _i11.Future<List<String>>.value(<String>[]),
+        returnValueForMissingStub: _i11.Future<List<String>>.value(<String>[]),
+      ) as _i11.Future<List<String>>);
 
   @override
   _i11.Future<_i2.PasswordCheckResult> checkPassword(String? password) =>

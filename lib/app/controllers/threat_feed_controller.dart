@@ -19,6 +19,7 @@ class ThreatFeedController extends GetxController {
   final List<ThreatAdvisory> _allThreats = <ThreatAdvisory>[];
   int _fetchGeneration = 0;
   bool _lastRemoteHasMorePages = false;
+  bool _lastRemoteUsedCpeMatches = false;
   ProfileController? _cachedProfileController;
 
   RxList<ThreatAdvisory> threats = <ThreatAdvisory>[].obs;
@@ -237,6 +238,7 @@ class ThreatFeedController extends GetxController {
   }) async {
     final severity = useRemoteSeverity ? selectedSeverity.value : null;
     final watchlistKeywords = _watchlistKeywords();
+    _lastRemoteUsedCpeMatches = false;
 
     if (!isWatchlistModeActive.value || watchlistKeywords.isEmpty) {
       final results = await _apiService.fetchThreats(
@@ -250,15 +252,35 @@ class ThreatFeedController extends GetxController {
     final combined = <ThreatAdvisory>[];
     var hasMore = false;
     for (final keyword in watchlistKeywords) {
-      final results = await _apiService.fetchThreats(
-        page: page,
-        keyword: keyword,
-        severity: severity,
-      );
+      final cpeNames = await _apiService.resolveCpeNames(keyword);
+      final results = <ThreatAdvisory>[];
+
+      if (cpeNames.isNotEmpty) {
+        _lastRemoteUsedCpeMatches = true;
+        for (final cpeName in cpeNames) {
+          results.addAll(
+            await _apiService.fetchThreats(
+              page: page,
+              cpeName: cpeName,
+              severity: severity,
+            ),
+          );
+          hasMore = hasMore || _apiService.hasMoreThreatPages;
+        }
+      } else {
+        results.addAll(
+          await _apiService.fetchThreats(
+            page: page,
+            keyword: keyword,
+            severity: severity,
+          ),
+        );
+        hasMore = hasMore || _apiService.hasMoreThreatPages;
+      }
+
       if (_apiService.errorMessage.isEmpty) {
         combined.addAll(results);
       }
-      hasMore = hasMore || _apiService.hasMoreThreatPages;
     }
 
     _lastRemoteHasMorePages = hasMore;
@@ -274,7 +296,7 @@ class ThreatFeedController extends GetxController {
         .map((technology) => technology.trim())
         .where((technology) => technology.isNotEmpty)
         .toSet()
-        .take(6)
+        .take(4)
         .toList();
   }
 
@@ -301,7 +323,7 @@ class ThreatFeedController extends GetxController {
       });
     }
 
-    if (isWatchlistModeActive.value) {
+    if (isWatchlistModeActive.value && !_lastRemoteUsedCpeMatches) {
       final watchlist = _watchlistKeywords();
       if (watchlist.isNotEmpty) {
         final lowerWatchlist = watchlist

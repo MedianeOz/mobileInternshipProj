@@ -25,10 +25,14 @@ class AppStrings {
 
   static const appName = 'CYBERSHIELD';
   static const nvdBaseUrl = 'https://services.nvd.nist.gov/rest/json/cves/2.0';
+  static const nvdCpeBaseUrl =
+      'https://services.nvd.nist.gov/rest/json/cpes/2.0';
   static const hibpBaseUrl = 'https://api.pwnedpasswords.com/range';
   static const nvdApiKey = '22c34afc-c129-4fa6-896f-a4676276fdb6';
   static const nvdResultsPerPage = 20;
   static const nvdRecentWindowDays = 120;
+  static const fcmAllAlertsTopic = 'cybershield_alerts';
+  static const fcmCriticalAlertsTopic = 'cybershield_critical_alerts';
 }
 
 class AppHiveBoxes {

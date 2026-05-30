@@ -79,9 +79,11 @@ void main() {
       apiService.fetchThreats(
         page: anyNamed('page'),
         keyword: anyNamed('keyword'),
+        cpeName: anyNamed('cpeName'),
         severity: anyNamed('severity'),
       ),
     ).thenAnswer((_) async => fixtureThreats);
+    when(apiService.resolveCpeNames(any)).thenAnswer((_) async => <String>[]);
   });
 
   group('ThreatFeedController - filtering', () {
@@ -202,6 +204,53 @@ void main() {
         'CVE-2024-0002',
         'CVE-2024-0001',
       ]);
+    });
+
+    test('watchlist mode uses resolved CPE names before keyword search',
+        () async {
+      final profile = MockProfileController();
+      when(profile.watchlist).thenReturn(['Apache Tomcat'].obs);
+      when(profile.criticalAlertsEnabled).thenReturn(true.obs);
+      when(apiService.resolveCpeNames('Apache Tomcat')).thenAnswer(
+        (_) async => ['cpe:2.3:a:apache:tomcat:*:*:*:*:*:*:*:*'],
+      );
+      when(
+        apiService.fetchThreats(
+          page: anyNamed('page'),
+          keyword: anyNamed('keyword'),
+          cpeName: 'cpe:2.3:a:apache:tomcat:*:*:*:*:*:*:*:*',
+          severity: anyNamed('severity'),
+        ),
+      ).thenAnswer(
+        (_) async => [
+          makeThreat(
+            id: 'CVE-2024-0100',
+            severity: 'HIGH',
+            baseScore: 8.1,
+            description: 'Remote code execution in a servlet container.',
+            publishedDate: DateTime(2024, 3, 20),
+          ),
+        ],
+      );
+      final controller = buildController(profileController: profile);
+
+      await controller.fetchThreats(refresh: true);
+
+      expect(controller.threats.single.id, 'CVE-2024-0100');
+      verify(
+        apiService.fetchThreats(
+          page: 0,
+          cpeName: 'cpe:2.3:a:apache:tomcat:*:*:*:*:*:*:*:*',
+          severity: null,
+        ),
+      ).called(1);
+      verifyNever(
+        apiService.fetchThreats(
+          page: anyNamed('page'),
+          keyword: 'Apache Tomcat',
+          severity: anyNamed('severity'),
+        ),
+      );
     });
 
     test('critical alert preference does not hide critical feed items',
